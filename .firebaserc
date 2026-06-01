@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "sebas-reviews"
+  },
+  "targets": {
+    "sebas-reviews": {
+      "hosting": {
+        "kino": [
+          "kino-sg"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

@@ -1,0 +1,72 @@
+/* KINO — design system v2 */
+:root {
+  /* superfici — deep space con profondità */
+  --bg:        #060a10;
+  --bg-1:      #0b1018;
+  --bg-2:      #111822;
+  --bg-3:      #182030;
+  --line:      rgba(255,255,255,.06);
+  --line-h:    rgba(255,255,255,.12);
+  --glass:     color-mix(in srgb, var(--bg) 72%, transparent);
+
+  /* testo — warm whites, cool grays */
+  --ink:       #edf0f5;
+  --ink-dim:   #7e8a9a;
+  --ink-mute:  #454e5c;
+
+  /* accento — cyan raffinato */
+  --accent:      #06b6d4;
+  --accent-h:    #22d3ee;
+  --accent-dim:  #0e7490;
+  --accent-glow: rgba(6,182,212,.15);
+  --accent-grad: linear-gradient(140deg, #67e8f9 0%, #06b6d4 50%, #0891b2 100%);
+  --accent-ink:  #041c22;
+
+  /* semantic */
+  --red:    #ef4444;
+  --green:  #22c55e;
+  --amber:  #f59e0b;
+
+  /* forma */
+  --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px;
+  --gutter: clamp(16px, 3vw, 40px);
+
+  /* moto */
+  --ease: cubic-bezier(.23, 1, .32, 1);
+  --t-fast: .14s; --t-med: .24s; --t-slow: .4s;
+
+  /* elevazione */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.02);
+  --shadow:    0 4px 16px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
+  --shadow-glow: 0 0 20px var(--accent-glow), 0 0 60px rgba(6,182,212,.06);
+
+  /* tipo */
+  --font-ui:   'Hanken Grotesk', system-ui, sans-serif;
+  --font-disp: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow-x: hidden; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+[hidden] { display: none !important; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+h1,h2,h3 { font-family: var(--font-disp); font-weight: 400; letter-spacing: .01em; margin: 0; }
+.mono { font-family: var(--font-mono); }
+.accent { color: var(--accent-h); }
+.serif { font-family: var(--font-disp); }
+
+/* scrollbar globale */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-mute); }

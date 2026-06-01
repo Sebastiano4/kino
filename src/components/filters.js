@@ -1,0 +1,335 @@
+/** Filter bar + panel — reusable across views. */
+import { genreList } from '../services/tmdb.js';
+
+const LANGUAGES = [
+  { code: 'en', name: 'English' }, { code: 'it', name: 'Italiano' },
+  { code: 'fr', name: 'Français' }, { code: 'de', name: 'Deutsch' },
+  { code: 'es', name: 'Español' }, { code: 'ja', name: '日本語' },
+  { code: 'ko', name: '한국어' }, { code: 'zh', name: '中文' },
+  { code: 'pt', name: 'Português' }, { code: 'ru', name: 'Русский' },
+  { code: 'hi', name: 'हिन्दी' }, { code: 'ar', name: 'العربية' },
+];
+
+let cachedGenres = null;
+
+export async function createFilterBar(container, config = {}) {
+  const filters = config.filters || [];
+  const sorts = config.sorts || [];
+  const onChange = config.onChange || (() => {});
+  const searchPlaceholder = config.searchPlaceholder || '';
+  const onSearch = config.onSearch || null;
+
+  if (filters.includes('genre') && !cachedGenres) {
+    try { const d = await genreList(); cachedGenres = d.genres || []; }
+    catch { cachedGenres = []; }
+  }
+
+  const state = {
+    genre: [], yearMin: '', yearMax: '',
+    ratingMin: '', ratingMax: '', runtime: '',
+    language: '', country: '', director: '', cast: '',
+    status: '', favorite: false, addedRange: '',
+    sort: config.defaultSort || sorts[0] || 'popularity',
+  };
+
+  const bar = document.createElement('div');
+  bar.className = 'filter-bar';
+  bar.innerHTML = `
+    ${searchPlaceholder ? `<div class="filter-search-wrap"><input class="filter-search" placeholder="${esc(searchPlaceholder)}"></div>` : ''}
+    <button class="filter-toggle">Filtri</button>
+    ${sorts.length ? `<div class="sort-wrap"><select class="sort-select">
+      ${sorts.map(s => `<option value="${s}" ${s === state.sort ? 'selected' : ''}>${sortLabel(s)}</option>`).join('')}
+    </select></div>` : ''}`;
+
+  const panel = document.createElement('div');
+  panel.className = 'filter-panel'; panel.hidden = true;
+
+  let html = '';
+
+  if (filters.includes('genre') && cachedGenres?.length) {
+    html += section('Genere', `<div class="filter-pills" data-filter="genre">
+      ${cachedGenres.map(g => `<button class="filter-pill" data-id="${g.id}">${esc(g.name)}</button>`).join('')}</div>`);
+  }
+  if (filters.includes('year')) {
+    html += section('Anno', `<div class="filter-row">
+      <input class="filter-input" data-filter="yearMin" type="number" placeholder="Da" min="1900" max="2030">
+      <input class="filter-input" data-filter="yearMax" type="number" placeholder="A" min="1900" max="2030"></div>`);
+  }
+  if (filters.includes('rating')) {
+    html += section('Valutazione IMDb', `<div class="filter-row">
+      <input class="filter-input" data-filter="ratingMin" type="number" placeholder="Min" min="0" max="10" step="0.1">
+      <input class="filter-input" data-filter="ratingMax" type="number" placeholder="Max" min="0" max="10" step="0.1"></div>`);
+  }
+  if (filters.includes('runtime')) {
+    html += section('Durata', `<div class="filter-pills" data-filter="runtime">
+      <button class="filter-pill" data-value="short">&lt; 90 min</button>
+      <button class="filter-pill" data-value="medium">90–150 min</button>
+      <button class="filter-pill" data-value="long">&gt; 150 min</button></div>`);
+  }
+  if (filters.includes('language')) {
+    html += section('Lingua', `<select class="filter-select" data-filter="language">
+      <option value="">Tutte</option>
+      ${LANGUAGES.map(l => `<option value="${l.code}">${l.name}</option>`).join('')}</select>`);
+  }
+  if (filters.includes('country')) {
+    html += section('Paese', `<input class="filter-input" data-filter="country" type="text" placeholder="Es: Italy, USA…" style="max-width:280px">`);
+  }
+  if (filters.includes('director')) {
+    html += section('Regista', `<input class="filter-input" data-filter="director" type="text" placeholder="Nome regista…" style="max-width:280px">`);
+  }
+  if (filters.includes('cast')) {
+    html += section('Cast', `<input class="filter-input" data-filter="cast" type="text" placeholder="Nome attore…" style="max-width:280px">`);
+  }
+  if (filters.includes('status')) {
+    html += section('Stato', `<div class="filter-pills" data-filter="status">
+      <button class="filter-pill" data-value="watched">Visto</button>
+      <button class="filter-pill" data-value="watchlist">Da vedere</button></div>`);
+  }
+  if (filters.includes('favorite')) {
+    html += section('Preferiti', `<div class="filter-pills" data-filter="favorite">
+      <button class="filter-pill" data-value="true">Solo preferiti</button></div>`);
+  }
+  if (filters.includes('addedDate')) {
+    html += section('Aggiunto', `<div class="filter-pills" data-filter="addedRange">
+      <button class="filter-pill" data-value="week">Ultima settimana</button>
+      <button class="filter-pill" data-value="month">Ultimo mese</button>
+      <button class="filter-pill" data-value="3months">Ultimi 3 mesi</button>
+      <button class="filter-pill" data-value="year">Ultimo anno</button></div>`);
+  }
+
+  html += `<button class="filter-clear" data-action="clear">Pulisci filtri</button>`;
+  panel.innerHTML = html;
+  container.appendChild(bar);
+  container.appendChild(panel);
+
+  // --- events ---
+  const toggleBtn = bar.querySelector('.filter-toggle');
+  toggleBtn.addEventListener('click', () => {
+    panel.hidden = !panel.hidden;
+    toggleBtn.classList.toggle('active', !panel.hidden);
+  });
+
+  const searchInput = bar.querySelector('.filter-search');
+  if (searchInput && onSearch) {
+    searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') onSearch(); });
+  }
+  if (searchInput && !onSearch) {
+    let searchDebounce;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => emit(), 200);
+    });
+  }
+
+  const sortSel = bar.querySelector('.sort-select');
+  if (sortSel) sortSel.addEventListener('change', e => { state.sort = e.target.value; emit(); });
+
+  // genre pills (multi-select)
+  panel.querySelectorAll('[data-filter="genre"] .filter-pill').forEach(p => {
+    p.addEventListener('click', () => {
+      const id = Number(p.dataset.id);
+      const i = state.genre.indexOf(id);
+      if (i >= 0) { state.genre.splice(i, 1); p.classList.remove('active'); }
+      else { state.genre.push(id); p.classList.add('active'); }
+      updateCount(); emit();
+    });
+  });
+
+  // single-select pill groups
+  ['runtime', 'status', 'addedRange'].forEach(key => {
+    panel.querySelectorAll(`[data-filter="${key}"] .filter-pill`).forEach(p => {
+      p.addEventListener('click', () => {
+        const wasActive = p.classList.contains('active');
+        panel.querySelectorAll(`[data-filter="${key}"] .filter-pill`).forEach(x => x.classList.remove('active'));
+        state[key] = wasActive ? '' : p.dataset.value;
+        if (!wasActive) p.classList.add('active');
+        updateCount(); emit();
+      });
+    });
+  });
+
+  // favorite toggle
+  panel.querySelectorAll('[data-filter="favorite"] .filter-pill').forEach(p => {
+    p.addEventListener('click', () => {
+      state.favorite = !state.favorite;
+      p.classList.toggle('active', state.favorite);
+      updateCount(); emit();
+    });
+  });
+
+  // text/number inputs (debounced)
+  let debounce;
+  ['yearMin', 'yearMax', 'ratingMin', 'ratingMax', 'director', 'cast', 'country'].forEach(key => {
+    const input = panel.querySelector(`[data-filter="${key}"]`);
+    if (input) input.addEventListener('input', () => {
+      state[key] = input.value;
+      clearTimeout(debounce);
+      debounce = setTimeout(() => { updateCount(); emit(); }, 300);
+    });
+  });
+
+  // language select
+  const langSel = panel.querySelector('[data-filter="language"]');
+  if (langSel) langSel.addEventListener('change', () => { state.language = langSel.value; updateCount(); emit(); });
+
+  // clear all
+  panel.querySelector('[data-action="clear"]')?.addEventListener('click', () => {
+    state.genre = []; state.yearMin = ''; state.yearMax = '';
+    state.ratingMin = ''; state.ratingMax = ''; state.runtime = '';
+    state.language = ''; state.country = ''; state.director = ''; state.cast = '';
+    state.status = ''; state.favorite = false; state.addedRange = '';
+    panel.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    panel.querySelectorAll('.filter-input').forEach(i => { i.value = ''; });
+    panel.querySelectorAll('.filter-select').forEach(s => { s.value = ''; });
+    updateCount(); emit();
+  });
+
+  function activeCount() {
+    let n = 0;
+    if (state.genre.length) n++;
+    if (state.yearMin || state.yearMax) n++;
+    if (state.ratingMin || state.ratingMax) n++;
+    if (state.runtime) n++;
+    if (state.language) n++;
+    if (state.country) n++;
+    if (state.director) n++;
+    if (state.cast) n++;
+    if (state.status) n++;
+    if (state.favorite) n++;
+    if (state.addedRange) n++;
+    return n;
+  }
+
+  function updateCount() {
+    const n = activeCount();
+    toggleBtn.innerHTML = n > 0 ? `Filtri <span class="filter-count">${n}</span>` : 'Filtri';
+  }
+
+  function emit() { onChange({ ...state, genre: [...state.genre] }, state.sort); }
+
+  return {
+    getState: () => ({ ...state, genre: [...state.genre] }),
+    destroy: () => { bar.remove(); panel.remove(); clearTimeout(debounce); }
+  };
+}
+
+/** Convert filter state → TMDB discover API params. */
+export function toDiscoverParams(state) {
+  const p = {};
+  if (state.genre.length) p.with_genres = state.genre.join(',');
+  if (state.yearMin) p['primary_release_date.gte'] = `${state.yearMin}-01-01`;
+  if (state.yearMax) p['primary_release_date.lte'] = `${state.yearMax}-12-31`;
+  if (state.language) p.with_original_language = state.language;
+  if (state.ratingMin) p['vote_average.gte'] = state.ratingMin;
+  if (state.ratingMax) p['vote_average.lte'] = state.ratingMax;
+  if (state.runtime === 'short') p['with_runtime.lte'] = 90;
+  if (state.runtime === 'medium') { p['with_runtime.gte'] = 90; p['with_runtime.lte'] = 150; }
+  if (state.runtime === 'long') p['with_runtime.gte'] = 150;
+  const sortMap = {
+    popularity: 'popularity.desc', rating: 'vote_average.desc',
+    year: 'primary_release_date.desc', title_asc: 'title.asc', title_desc: 'title.desc',
+  };
+  p.sort_by = sortMap[state.sort] || 'popularity.desc';
+  if (state.sort === 'rating') p['vote_count.gte'] = 50;
+  return p;
+}
+
+/** Client-side filter for Archive/Watchlist movies. */
+export function filterMovies(movies, state) {
+  return movies.filter(m => {
+    if (state.genre.length) {
+      const ids = m.genreIds || [];
+      if (ids.length) {
+        if (!state.genre.some(g => ids.includes(g))) return false;
+      } else {
+        const names = (cachedGenres || []).filter(g => state.genre.includes(g.id)).map(g => g.name.toLowerCase());
+        const mg = (m.genres || []).map(g => (typeof g === 'string' ? g : '').toLowerCase());
+        if (names.length && !names.some(n => mg.includes(n))) return false;
+      }
+    }
+
+    const year = Number(m.year) || Number((m.releaseDate || '').slice(0, 4));
+    if (state.yearMin && year < Number(state.yearMin)) return false;
+    if (state.yearMax && year > Number(state.yearMax)) return false;
+
+    if (state.ratingMin || state.ratingMax) {
+      const r = parseFloat(m.imdbRating) || parseFloat(m.rating) || 0;
+      if (state.ratingMin && r < parseFloat(state.ratingMin)) return false;
+      if (state.ratingMax && r > parseFloat(state.ratingMax)) return false;
+    }
+
+    if (state.runtime) {
+      const rt = m.runtime || 0;
+      if (!rt) return false;
+      if (state.runtime === 'short' && rt >= 90) return false;
+      if (state.runtime === 'medium' && (rt < 90 || rt > 150)) return false;
+      if (state.runtime === 'long' && rt <= 150) return false;
+    }
+
+    if (state.language && m.originalLanguage !== state.language) return false;
+
+    if (state.country) {
+      const c = (m.countries || []).join(' ').toLowerCase();
+      if (!c.includes(state.country.toLowerCase())) return false;
+    }
+
+    if (state.director) {
+      if (!(m.director || '').toLowerCase().includes(state.director.toLowerCase())) return false;
+    }
+
+    if (state.cast) {
+      const c = (m.cast || []).join(' ').toLowerCase();
+      if (!c.includes(state.cast.toLowerCase())) return false;
+    }
+
+    if (state.status === 'watched' && (m.isWatchlist || m.rating == null)) return false;
+    if (state.status === 'watchlist' && !m.isWatchlist) return false;
+
+    if (state.favorite && !m.isFavorite) return false;
+
+    if (state.addedRange) {
+      const added = m.createdAt?.seconds ? m.createdAt.seconds * 1000 : (m.order || 0);
+      if (!added) return false;
+      const now = Date.now();
+      const ranges = { week: 7, month: 30, '3months': 90, year: 365 };
+      const days = ranges[state.addedRange] || 0;
+      if (now - added > days * 86400000) return false;
+    }
+
+    return true;
+  });
+}
+
+/** Client-side sort. */
+export function sortMovies(movies, sortKey) {
+  const s = [...movies];
+  switch (sortKey) {
+    case 'rating':
+      return s.sort((a, b) => (parseFloat(b.imdbRating) || parseFloat(b.rating) || 0) - (parseFloat(a.imdbRating) || parseFloat(a.rating) || 0));
+    case 'year':
+      return s.sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+    case 'title_asc':
+      return s.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    case 'title_desc':
+      return s.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+    case 'added':
+      return s.sort((a, b) => {
+        const ta = a.createdAt?.seconds || a.order || 0;
+        const tb = b.createdAt?.seconds || b.order || 0;
+        return tb - ta;
+      });
+    case 'popularity': default:
+      return s.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  }
+}
+
+function sortLabel(key) {
+  return { popularity: 'Popolarità', rating: 'Valutazione', year: 'Anno',
+    title_asc: 'Titolo A→Z', title_desc: 'Titolo Z→A', added: 'Data aggiunta' }[key] || key;
+}
+
+function section(label, content) {
+  return `<div class="filter-section"><div class="filter-section-label">${label}</div>${content}</div>`;
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kino</title>
+  <link rel="icon" href="data:,">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#060a10">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/styles/tokens.css?v=2">
+  <link rel="stylesheet" href="src/styles/app.css?v=2">
+</head>
+<body>
+
+  <!-- GATE login -->
+  <div id="gate" class="center-screen">
+    <div class="kino-logo" style="font-size:3rem"><em>Kino</em></div>
+    <p style="color:var(--ink-dim);max-width:340px;line-height:1.5">Il tuo sistema operativo cinematografico.</p>
+    <button id="loginBtn" class="btn btn-accent">Entra con Google</button>
+  </div>
+
+  <!-- APP -->
+  <div id="app" hidden>
+    <nav class="kino-nav">
+      <span class="kino-logo" id="homeBtn"><em>Kino</em></span>
+      <div class="kino-tabs" id="tabs"></div>
+      <button id="settingsBtn" class="nav-icon" title="Impostazioni">⚙</button>
+      <button id="logoutBtn" class="nav-icon" title="Esci" style="font-size:1rem">⏻</button>
+    </nav>
+    <main id="view"></main>
+  </div>
+
+  <script type="module" src="src/main.js?v=2"></script>
+</body>
+</html>
