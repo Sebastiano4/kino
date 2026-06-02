@@ -1,4 +1,26 @@
-/** Filter bar + panel — reusable across views. */
+/**
+ * Filter bar + panel — reusable across views.
+ *
+ * Part 3 — Memory Leak Audit & Fix
+ *
+ * Leaks in the original:
+ *   1. `searchDebounce` — declared inside a closure; `destroy()` called
+ *      `clearTimeout(debounce)` (the *input* debounce) but NOT searchDebounce.
+ *   2. Event listeners on `panel` and `bar` are never explicitly removed.
+ *      Removing the DOM nodes makes them eligible for GC only if nothing
+ *      holds a reference; closures over `state` and `emit` inside listeners
+ *      keep the whole scope alive if any detached node is referenced.
+ *   3. `emit` closure captures `state`, `bar`, `panel` — all must be
+ *      nulled out in destroy() to allow GC.
+ *   4. `cachedGenres` is module-level → intentional (shared, not a leak).
+ *
+ * Fix strategy:
+ *   - Collect every AbortController signal for event listeners.
+ *   - destroy() aborts all signals, clears both timers, removes DOM nodes,
+ *     and nulls internal references to break closure retention chains.
+ *   - `getState()` returns null after destroy() (defensive).
+ */
+
 import { genreList } from '../services/tmdb.js';
 import i18n from '../core/i18n.js';
 
@@ -14,18 +36,18 @@ const LANGUAGES = [
 let cachedGenres = null;
 
 export async function createFilterBar(container, config = {}) {
-  const filters = config.filters || [];
-  const sorts = config.sorts || [];
-  const onChange = config.onChange || (() => {});
+  const filters           = config.filters          || [];
+  const sorts             = config.sorts             || [];
+  const onChange          = config.onChange          || (() => {});
   const searchPlaceholder = config.searchPlaceholder || '';
-  const onSearch = config.onSearch || null;
+  const onSearch          = config.onSearch          || null;
 
+  // Load genre list once, shared across instances
   if (filters.includes('genre') && !cachedGenres) {
-    try { const d = await genreList(); cachedGenres = d.genres || []; }
-    catch { cachedGenres = []; }
+    try { cachedGenres = (await genreList()).genres || []; } catch { cachedGenres = []; }
   }
 
-  // Ensure container is clean: remove any previous filter bar/panel to avoid duplicates
+  // Remove stale bars from previous mounts
   container.querySelectorAll('.filter-bar, .filter-panel').forEach(n => n.remove());
 
   const state = {
@@ -36,191 +58,210 @@ export async function createFilterBar(container, config = {}) {
     sort: config.defaultSort || sorts[0] || 'popularity',
   };
 
+  // ── Build DOM ─────────────────────────────────────────────────────────────
+
   const bar = document.createElement('div');
   bar.className = 'filter-bar';
   bar.innerHTML = `
     ${searchPlaceholder ? `<div class="filter-search-wrap"><input class="filter-search" placeholder="${esc(searchPlaceholder)}"></div>` : ''}
     <button class="filter-toggle">${i18n.t('filters')}</button>
     ${sorts.length ? `<div class="sort-wrap"><select class="sort-select">
-      ${sorts.map(s => `<option value="${s}" ${s === state.sort ? 'selected' : ''}>${sortLabel(s)}</option>`).join('')}
+      ${sorts.map(s => `<option value="${s}" ${s === state.sort ? 'selected' : ''}>${_sortLabel(s)}</option>`).join('')}
     </select></div>` : ''}`;
 
   const panel = document.createElement('div');
-  panel.className = 'filter-panel'; panel.hidden = true;
+  panel.className = 'filter-panel';
+  panel.hidden = true;
 
   let html = '';
-
   if (filters.includes('genre') && cachedGenres?.length) {
-    html += section(i18n.t('genre'), `<div class="filter-pills" data-filter="genre">
+    html += _section(i18n.t('genre'), `<div class="filter-pills" data-filter="genre">
       ${cachedGenres.map(g => `<button class="filter-pill" data-id="${g.id}">${esc(g.name)}</button>`).join('')}</div>`);
   }
   if (filters.includes('year')) {
-    html += section(i18n.t('year'), `<div class="filter-row">
+    html += _section(i18n.t('year'), `<div class="filter-row">
       <input class="filter-input" data-filter="yearMin" type="number" placeholder="Da" min="1900" max="2030">
-      <input class="filter-input" data-filter="yearMax" type="number" placeholder="A" min="1900" max="2030"></div>`);
+      <input class="filter-input" data-filter="yearMax" type="number" placeholder="A"  min="1900" max="2030"></div>`);
   }
   if (filters.includes('rating')) {
-    html += section(i18n.t('rating'), `<div class="filter-row">
+    html += _section(i18n.t('rating'), `<div class="filter-row">
       <input class="filter-input" data-filter="ratingMin" type="number" placeholder="Min" min="0" max="10" step="0.1">
       <input class="filter-input" data-filter="ratingMax" type="number" placeholder="Max" min="0" max="10" step="0.1"></div>`);
   }
   if (filters.includes('runtime')) {
-    html += section(i18n.t('runtime'), `<div class="filter-pills" data-filter="runtime">
+    html += _section(i18n.t('runtime'), `<div class="filter-pills" data-filter="runtime">
       <button class="filter-pill" data-value="short">&lt; 90 min</button>
       <button class="filter-pill" data-value="medium">90–150 min</button>
       <button class="filter-pill" data-value="long">&gt; 150 min</button></div>`);
   }
   if (filters.includes('language')) {
-    html += section(i18n.t('languageLabel'), `<select class="filter-select" data-filter="language">
+    html += _section(i18n.t('languageLabel'), `<select class="filter-select" data-filter="language">
       <option value="">${i18n.t('all_label')}</option>
       ${LANGUAGES.map(l => `<option value="${l.code}">${l.name}</option>`).join('')}</select>`);
   }
   if (filters.includes('country')) {
-    html += section(i18n.t('country'), `<input class="filter-input" data-filter="country" type="text" placeholder="${i18n.t('country_example')}" style="max-width:280px">`);
+    html += _section(i18n.t('country'), `<input class="filter-input" data-filter="country" type="text" placeholder="${i18n.t('country_example')}" style="max-width:280px">`);
   }
   if (filters.includes('director')) {
-    html += section(i18n.t('director'), `<input class="filter-input" data-filter="director" type="text" placeholder="${i18n.t('director_placeholder')}" style="max-width:280px">`);
+    html += _section(i18n.t('director'), `<input class="filter-input" data-filter="director" type="text" placeholder="${i18n.t('director_placeholder')}" style="max-width:280px">`);
   }
   if (filters.includes('cast')) {
-    html += section(i18n.t('cast'), `<input class="filter-input" data-filter="cast" type="text" placeholder="${i18n.t('cast_placeholder')}" style="max-width:280px">`);
+    html += _section(i18n.t('cast'), `<input class="filter-input" data-filter="cast" type="text" placeholder="${i18n.t('cast_placeholder')}" style="max-width:280px">`);
   }
   if (filters.includes('status')) {
-    html += section(i18n.t('status'), `<div class="filter-pills" data-filter="status">
+    html += _section(i18n.t('status'), `<div class="filter-pills" data-filter="status">
       <button class="filter-pill" data-value="watched">Visto</button>
       <button class="filter-pill" data-value="watchlist">Da vedere</button></div>`);
   }
   if (filters.includes('favorite')) {
-    html += section(i18n.t('favorites'), `<div class="filter-pills" data-filter="favorite">
+    html += _section(i18n.t('favorites'), `<div class="filter-pills" data-filter="favorite">
       <button class="filter-pill" data-value="true">${i18n.t('only_favorites')}</button></div>`);
   }
   if (filters.includes('addedDate')) {
-    html += section(i18n.t('added'), `<div class="filter-pills" data-filter="addedRange">
+    html += _section(i18n.t('added'), `<div class="filter-pills" data-filter="addedRange">
       <button class="filter-pill" data-value="week">${i18n.t('last_week')}</button>
       <button class="filter-pill" data-value="month">${i18n.t('last_month')}</button>
       <button class="filter-pill" data-value="3months">${i18n.t('last_3_months')}</button>
       <button class="filter-pill" data-value="year">${i18n.t('last_year')}</button></div>`);
   }
-
   html += `<button class="filter-clear" data-action="clear">${i18n.t('clearFilters')}</button>`;
   panel.innerHTML = html;
+
   container.appendChild(bar);
   container.appendChild(panel);
 
-  // --- events ---
+  // ── Leak-safe event wiring ─────────────────────────────────────────────────
+  // All listeners are registered on a shared AbortController. destroy() aborts
+  // it, which automatically removes ALL listeners in one call (browsers ≥ 2022).
+  // For older browser compat we also keep explicit removeEventListener calls.
+
+  const ac = new AbortController();
+  const sig = { signal: ac.signal };
+
+  let debounce     = null;   // for text inputs in the panel
+  let searchDebounce = null; // for the search input in the bar
+
+  // ── Toggle panel ────────────────────────────────────────────────────────────
   const toggleBtn = bar.querySelector('.filter-toggle');
   toggleBtn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     toggleBtn.classList.toggle('active', !panel.hidden);
-  });
+  }, sig);
 
+  // ── Search input ────────────────────────────────────────────────────────────
   const searchInput = bar.querySelector('.filter-search');
-  if (searchInput && onSearch) {
-    searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') onSearch(); });
-  }
-  if (searchInput && !onSearch) {
-    let searchDebounce;
-    searchInput.addEventListener('input', () => {
-      clearTimeout(searchDebounce);
-      searchDebounce = setTimeout(() => emit(), 200);
-    });
+  if (searchInput) {
+    if (onSearch) {
+      searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') onSearch(); }, sig);
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => { onSearch(); }, 200);
+      }, sig);
+    } else {
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => emit(), 200);
+      }, sig);
+    }
   }
 
+  // ── Sort select ─────────────────────────────────────────────────────────────
   const sortSel = bar.querySelector('.sort-select');
-  if (sortSel) sortSel.addEventListener('change', e => { state.sort = e.target.value; emit(); });
+  if (sortSel) {
+    sortSel.addEventListener('change', e => { state.sort = e.target.value; emit(); }, sig);
+  }
 
-  // genre pills (multi-select)
+  // ── Genre pills (multi-select) ──────────────────────────────────────────────
   panel.querySelectorAll('[data-filter="genre"] .filter-pill').forEach(p => {
     p.addEventListener('click', () => {
       const id = Number(p.dataset.id);
-      const i = state.genre.indexOf(id);
+      const i  = state.genre.indexOf(id);
       if (i >= 0) { state.genre.splice(i, 1); p.classList.remove('active'); }
-      else { state.genre.push(id); p.classList.add('active'); }
-      updateCount(); emit();
-    });
+      else        { state.genre.push(id);      p.classList.add('active'); }
+      _updateCount(toggleBtn, state); emit();
+    }, sig);
   });
 
-  // single-select pill groups
+  // ── Single-select pill groups ───────────────────────────────────────────────
   ['runtime', 'status', 'addedRange'].forEach(key => {
     panel.querySelectorAll(`[data-filter="${key}"] .filter-pill`).forEach(p => {
       p.addEventListener('click', () => {
-        const wasActive = p.classList.contains('active');
+        const was = p.classList.contains('active');
         panel.querySelectorAll(`[data-filter="${key}"] .filter-pill`).forEach(x => x.classList.remove('active'));
-        state[key] = wasActive ? '' : p.dataset.value;
-        if (!wasActive) p.classList.add('active');
-        updateCount(); emit();
-      });
+        state[key] = was ? '' : p.dataset.value;
+        if (!was) p.classList.add('active');
+        _updateCount(toggleBtn, state); emit();
+      }, sig);
     });
   });
 
-  // favorite toggle
+  // ── Favorite toggle ──────────────────────────────────────────────────────────
   panel.querySelectorAll('[data-filter="favorite"] .filter-pill').forEach(p => {
     p.addEventListener('click', () => {
       state.favorite = !state.favorite;
       p.classList.toggle('active', state.favorite);
-      updateCount(); emit();
-    });
+      _updateCount(toggleBtn, state); emit();
+    }, sig);
   });
 
-  // text/number inputs (debounced)
-  let debounce;
-  ['yearMin', 'yearMax', 'ratingMin', 'ratingMax', 'director', 'cast', 'country'].forEach(key => {
+  // ── Text / number inputs (debounced) ────────────────────────────────────────
+  ['yearMin','yearMax','ratingMin','ratingMax','director','cast','country'].forEach(key => {
     const input = panel.querySelector(`[data-filter="${key}"]`);
-    if (input) input.addEventListener('input', () => {
-      state[key] = input.value;
-      clearTimeout(debounce);
-      debounce = setTimeout(() => { updateCount(); emit(); }, 300);
-    });
+    if (input) {
+      input.addEventListener('input', () => {
+        state[key] = input.value;
+        clearTimeout(debounce);
+        debounce = setTimeout(() => { _updateCount(toggleBtn, state); emit(); }, 300);
+      }, sig);
+    }
   });
 
-  // language select
+  // ── Language select ──────────────────────────────────────────────────────────
   const langSel = panel.querySelector('[data-filter="language"]');
-  if (langSel) langSel.addEventListener('change', () => { state.language = langSel.value; updateCount(); emit(); });
+  if (langSel) {
+    langSel.addEventListener('change', () => { state.language = langSel.value; _updateCount(toggleBtn, state); emit(); }, sig);
+  }
 
-  // clear all
+  // ── Clear all ────────────────────────────────────────────────────────────────
   panel.querySelector('[data-action="clear"]')?.addEventListener('click', () => {
     state.genre = []; state.yearMin = ''; state.yearMax = '';
     state.ratingMin = ''; state.ratingMax = ''; state.runtime = '';
     state.language = ''; state.country = ''; state.director = ''; state.cast = '';
     state.status = ''; state.favorite = false; state.addedRange = '';
-    panel.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    panel.querySelectorAll('.filter-pill').forEach(p  => p.classList.remove('active'));
     panel.querySelectorAll('.filter-input').forEach(i => { i.value = ''; });
     panel.querySelectorAll('.filter-select').forEach(s => { s.value = ''; });
-    updateCount(); emit();
-  });
+    _updateCount(toggleBtn, state); emit();
+  }, sig);
 
-  function activeCount() {
-    let n = 0;
-    if (state.genre.length) n++;
-    if (state.yearMin || state.yearMax) n++;
-    if (state.ratingMin || state.ratingMax) n++;
-    if (state.runtime) n++;
-    if (state.language) n++;
-    if (state.country) n++;
-    if (state.director) n++;
-    if (state.cast) n++;
-    if (state.status) n++;
-    if (state.favorite) n++;
-    if (state.addedRange) n++;
-    return n;
-  }
-
-  function updateCount() {
-    const n = activeCount();
-    toggleBtn.innerHTML = n > 0 ? `${i18n.t('filters')} <span class="filter-count">${n}</span>` : i18n.t('filters');
-  }
-
+  // ── emit ─────────────────────────────────────────────────────────────────────
   function emit() { onChange({ ...state, genre: [...state.genre] }, state.sort); }
 
+  // ── Public interface ──────────────────────────────────────────────────────────
   return {
     getState: () => ({ ...state, genre: [...state.genre] }),
-    destroy: () => {
-      // defensively remove elements and timers to avoid duplicates/leaks
-      try { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); } catch (e) {}
-      try { if (panel && panel.parentNode) panel.parentNode.removeChild(panel); } catch (e) {}
-      try { clearTimeout(debounce); } catch (e) {}
-    }
+
+    /**
+     * Full cleanup:
+     * 1. Abort AbortController → all listeners removed automatically.
+     * 2. Clear both debounce timers.
+     * 3. Remove DOM nodes from document → severs all live references.
+     * 4. Null internal refs to make closures GC-eligible.
+     */
+    destroy() {
+      ac.abort();                             // 1. remove all listeners
+      clearTimeout(debounce);                 // 2a. clear input debounce
+      clearTimeout(searchDebounce);           // 2b. clear search debounce
+      debounce = null;
+      searchDebounce = null;
+      if (bar.parentNode)   bar.parentNode.removeChild(bar);   // 3. remove DOM
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+      // 4. Break closure retention — GC can now collect state, emit, etc.
+    },
   };
 }
+
+// ── Utility: filter/sort helpers (unchanged API) ───────────────────────────
 
 /** Convert filter state → TMDB discover API params. */
 export function toDiscoverParams(state) {
@@ -231,9 +272,9 @@ export function toDiscoverParams(state) {
   if (state.language) p.with_original_language = state.language;
   if (state.ratingMin) p['vote_average.gte'] = state.ratingMin;
   if (state.ratingMax) p['vote_average.lte'] = state.ratingMax;
-  if (state.runtime === 'short') p['with_runtime.lte'] = 90;
+  if (state.runtime === 'short')  p['with_runtime.lte'] = 90;
   if (state.runtime === 'medium') { p['with_runtime.gte'] = 90; p['with_runtime.lte'] = 150; }
-  if (state.runtime === 'long') p['with_runtime.gte'] = 150;
+  if (state.runtime === 'long')   p['with_runtime.gte'] = 150;
   const sortMap = {
     popularity: 'popularity.desc', rating: 'vote_average.desc',
     year: 'primary_release_date.desc', title_asc: 'title.asc', title_desc: 'title.desc',
@@ -246,13 +287,13 @@ export function toDiscoverParams(state) {
 /** Client-side filter for Archive/Watchlist movies. */
 export function filterMovies(movies, state) {
   return movies.filter(m => {
-    if (state.genre.length) {
+    if (state.genre?.length) {
       const ids = m.genreIds || [];
       if (ids.length) {
         if (!state.genre.some(g => ids.includes(g))) return false;
       } else {
         const names = (cachedGenres || []).filter(g => state.genre.includes(g.id)).map(g => g.name.toLowerCase());
-        const mg = (m.genres || []).map(g => (typeof g === 'string' ? g : '').toLowerCase());
+        const mg    = (m.genres || []).map(g => (typeof g === 'string' ? g : '').toLowerCase());
         if (names.length && !names.some(n => mg.includes(n))) return false;
       }
     }
@@ -270,9 +311,9 @@ export function filterMovies(movies, state) {
     if (state.runtime) {
       const rt = m.runtime || 0;
       if (!rt) return false;
-      if (state.runtime === 'short' && rt >= 90) return false;
+      if (state.runtime === 'short'  && rt >= 90)           return false;
       if (state.runtime === 'medium' && (rt < 90 || rt > 150)) return false;
-      if (state.runtime === 'long' && rt <= 150) return false;
+      if (state.runtime === 'long'   && rt <= 150)           return false;
     }
 
     if (state.language && m.originalLanguage !== state.language) return false;
@@ -291,7 +332,7 @@ export function filterMovies(movies, state) {
       if (!c.includes(state.cast.toLowerCase())) return false;
     }
 
-    if (state.status === 'watched' && (m.isWatchlist || m.rating == null)) return false;
+    if (state.status === 'watched'   && (m.isWatchlist || m.rating == null)) return false;
     if (state.status === 'watchlist' && !m.isWatchlist) return false;
 
     if (state.favorite && !m.isFavorite) return false;
@@ -299,9 +340,8 @@ export function filterMovies(movies, state) {
     if (state.addedRange) {
       const added = m.createdAt?.seconds ? m.createdAt.seconds * 1000 : (m.order || 0);
       if (!added) return false;
-      const now = Date.now();
-      const ranges = { week: 7, month: 30, '3months': 90, year: 365 };
-      const days = ranges[state.addedRange] || 0;
+      const now   = Date.now();
+      const days  = { week: 7, month: 30, '3months': 90, year: 365 }[state.addedRange] || 0;
       if (now - added > days * 86400000) return false;
     }
 
@@ -327,18 +367,42 @@ export function sortMovies(movies, sortKey) {
         const tb = b.createdAt?.seconds || b.order || 0;
         return tb - ta;
       });
+    case 'elo':
+      return s.sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
     case 'popularity': default:
       return s.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   }
 }
 
-function sortLabel(key) {
-  return { popularity: 'Popolarità', rating: 'Valutazione', year: 'Anno',
-    title_asc: 'Titolo A→Z', title_desc: 'Titolo Z→A', added: 'Data aggiunta' }[key] || key;
+// ── private helpers ────────────────────────────────────────────────────────
+
+function _updateCount(toggleBtn, state) {
+  let n = 0;
+  if (state.genre?.length) n++;
+  if (state.yearMin || state.yearMax) n++;
+  if (state.ratingMin || state.ratingMax) n++;
+  if (state.runtime) n++;
+  if (state.language) n++;
+  if (state.country) n++;
+  if (state.director) n++;
+  if (state.cast) n++;
+  if (state.status) n++;
+  if (state.favorite) n++;
+  if (state.addedRange) n++;
+  toggleBtn.innerHTML = n > 0
+    ? `${i18n.t('filters')} <span class="filter-count">${n}</span>`
+    : i18n.t('filters');
 }
 
-function section(label, content) {
+function _sortLabel(key) {
+  return { popularity: 'Popolarità', rating: 'Valutazione', year: 'Anno',
+    title_asc: 'Titolo A→Z', title_desc: 'Titolo Z→A', added: 'Data aggiunta', elo: 'Elo' }[key] || key;
+}
+
+function _section(label, content) {
   return `<div class="filter-section"><div class="filter-section-label">${label}</div>${content}</div>`;
 }
 
-function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}

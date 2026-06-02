@@ -76,6 +76,7 @@ src/
 - [x] Ordinamento: popolarità, valutazione, anno, titolo A-Z/Z-A, data aggiunta
 - [x] Design v2: palette cyan premium, glass nav, hero sections, glow effects, carousel
 - [x] PWA + service worker
+- [x] Deployment scripts added: `deploy-git-firestore.bat` and `watch-and-deploy.ps1`
 
 **DA FARE:**
 1. Logo/icone proprie (`assets/icons/` sono placeholder)
@@ -88,8 +89,10 @@ src/
 ## 5. Comandi
 ```powershell
 cd C:\Users\gjela\OneDrive\Documenti\kino
-firebase serve            # http://localhost:5000
-firebase deploy --only hosting:kino   # → https://kino-sg.web.app
+firebase serve                             # http://localhost:5000
+firebase deploy --only hosting:kino        # → https://kino-sg.web.app
+.\deploy-git-firestore.bat                 # git add/commit/push + deploy hosting+kino,firestore
+.\watch-and-deploy.ps1                     # watch folder and auto-run deploy on changes
 ```
 
 ## 6. Firestore Rules (da aggiungere)
@@ -100,4 +103,4 @@ match /apps/kino/users/{uid}/{document=**} {
 ```
 
 ---
-*Aggiornato 2026-06-01 v1.1*
+*Aggiornato 2026-06-01 v1.2*

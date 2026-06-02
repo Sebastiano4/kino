@@ -1,8 +1,52 @@
 rules_version = '2';
+
+/**
+ * KINO — Firestore Security Rules
+ *
+ * Data structure:
+ *   /apps/{appId}/users/{userId}/movies/{movieId}
+ *   /apps/{appId}/users/{userId}/matches/{matchId}
+ *   /apps/{appId}/users/{userId}                    <- profile doc
+ *
+ * Policy: a user can only read/write their own data.
+ * No cross-user access. No unauthenticated access.
+ * Validates write payloads to prevent oversized documents.
+ */
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /apps/kino/users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+    // Per-user namespace (any appId — future-proof)
+    match /apps/{appId}/users/{userId} {
+      // User profile document
+      allow read:  if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && request.resource.data.keys().size() <= 20;
+
+      // Movies sub-collection
+      match /movies/{movieId} {
+        allow read:  if isOwner(userId);
+        allow write: if isOwner(userId)
+                     && request.resource.data.keys().size() <= 40;
+      }
+
+      // Match history sub-collection (Elo battles)
+      match /matches/{matchId} {
+        allow read:  if isOwner(userId);
+        allow create: if isOwner(userId)
+                      && request.resource.data.keys().size() <= 20;
+        // Matches are append-only — no update/delete
+        allow update, delete: if false;
+      }
+    }
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

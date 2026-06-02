@@ -6,11 +6,180 @@
   <title>Kino</title>
   <link rel="icon" href="data:,">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#060a10">
+  <meta name="theme-color" content="#060a10" id="metaThemeColor">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="src/styles/tokens.css?v=2">
-  <link rel="stylesheet" href="src/styles/app.css?v=2">
+
+  <!--
+    NO-FOUC THEME SCRIPT
+    Must run before any CSS link to set data-theme on <html> before
+    the browser paints. Prevents flash of dark content in light-mode.
+  -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('kino-theme') || 'system';
+      var d = (t === 'system')
+        ? (window.matchMedia('(prefers-color-scheme:light)').matches ? 'light' : 'dark')
+        : t;
+      document.documentElement.dataset.theme = d;
+      var meta = document.getElementById('metaThemeColor');
+      if (meta) meta.content = d === 'light' ? '#f4f5f7' : '#060a10';
+    })();
+  </script>
+
+  <link rel="stylesheet" href="src/styles/tokens.css?v=3">
+  <link rel="stylesheet" href="src/styles/app.css?v=3">
+
+  <style>
+    /* Router loading indicator */
+    .router-loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 120px;
+    }
+    .router-spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--line-h);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Settings bottom sheet ── */
+    .settings-sheet-backdrop {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .settings-sheet {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      max-height: 92dvh;
+      background: var(--bg-1);
+      border-radius: var(--r-lg) var(--r-lg) 0 0;
+      box-shadow: var(--shadow-lg);
+      display: flex; flex-direction: column;
+      will-change: transform;
+    }
+    .sheet-handle {
+      flex-shrink: 0;
+      padding: 14px 0 4px;
+      display: flex; justify-content: center;
+      cursor: grab;
+      touch-action: none;
+    }
+    .sheet-handle-bar {
+      width: 40px; height: 4px;
+      background: var(--line-h);
+      border-radius: var(--r-pill);
+    }
+    .settings-sheet-body {
+      flex: 1; overflow-y: auto;
+      padding: 0 var(--gutter) var(--gutter);
+    }
+
+    /* ── Smart watchlist pills ── */
+    .smart-modes {
+      display: flex; gap: 8px; padding: 12px var(--gutter) 0;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .smart-modes::-webkit-scrollbar { display: none; }
+    .smart-pill {
+      flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2px;
+      padding: 8px 14px;
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: var(--r-pill);
+      cursor: pointer; font-size: .82rem; color: var(--ink-dim);
+      transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+    }
+    .smart-pill small { font-size: .68rem; color: var(--ink-mute); }
+    .smart-pill.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .smart-pill.active small { color: var(--accent-ink); opacity: .7; }
+    .smart-count {
+      display: inline-block; margin-left: 4px;
+      background: var(--bg-3); border-radius: var(--r-pill);
+      font-size: .65rem; padding: 1px 5px;
+    }
+    .smart-pill.active .smart-count { background: rgba(255,255,255,.2); }
+
+    /* ── Battle filters ── */
+    .battle-filters {
+      padding: 12px var(--gutter) 0;
+    }
+    .battle-filter-row {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    }
+
+    /* ── AI analysis block ── */
+    .ai-analysis-block { margin-top: 12px; }
+    .ai-analyze-btn {
+      background: linear-gradient(135deg, #1a2a3a, #0e1c2c);
+      border: 1px solid var(--accent-dim);
+      color: var(--accent-h); font-size: .82rem;
+      transition: all var(--t-fast);
+    }
+    .ai-analyze-btn:hover { background: var(--accent-dim); color: #fff; }
+    .ai-result { margin-top: 10px; }
+    .ai-loading { display: flex; align-items: center; gap: 10px; color: var(--ink-dim); font-size: .82rem; }
+    .ai-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--line-h); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    .ai-result-card {
+      background: var(--bg-2); border: 1px solid var(--line);
+      border-radius: var(--r-md); padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .ai-result-header { display: flex; align-items: center; gap: 10px; }
+    .ai-sentiment { font-weight: 600; font-size: .9rem; }
+    .ai-tone { font-size: .78rem; color: var(--ink-mute); font-style: italic; }
+    .ai-badge-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .ai-badge-label { font-size: .7rem; color: var(--ink-mute); text-transform: uppercase; letter-spacing: .05em; }
+    .ai-badge {
+      padding: 3px 8px; border-radius: var(--r-pill); font-size: .75rem;
+    }
+    .ai-badge-theme { background: rgba(6,182,212,.12); color: var(--accent-h); border: 1px solid var(--accent-dim); }
+    .ai-badge-tag   { background: var(--bg-3); color: var(--ink-dim); border: 1px solid var(--line); }
+    .ai-recs { display: flex; flex-direction: column; gap: 4px; }
+    .ai-rec-list { margin: 4px 0 0 16px; padding: 0; font-size: .82rem; color: var(--ink-dim); }
+    .ai-rec-list li { margin-bottom: 2px; }
+    .ai-raw-fallback { font-size: .78rem; color: var(--ink-mute); white-space: pre-wrap; }
+    .ai-error {
+      display: flex; flex-direction: column; gap: 4px;
+      color: var(--red); font-size: .82rem;
+      background: rgba(239,68,68,.08); border-radius: var(--r-sm); padding: 10px;
+    }
+
+    /* ── Streaming providers ── */
+    .providers-wrap { padding: 16px var(--gutter) 0; }
+    .providers-loading { display: flex; }
+    .providers-section { border-top: 1px solid var(--line); padding-top: 14px; }
+    .providers-title { font-size: .9rem; color: var(--ink-dim); margin-bottom: 10px; }
+    .providers-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .providers-label { font-size: .72rem; color: var(--ink-mute); width: 44px; flex-shrink: 0; }
+    .providers-logos { display: flex; gap: 6px; flex-wrap: wrap; }
+    .provider-chip {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; cursor: pointer;
+      background: var(--bg-2); border: 1px solid var(--line);
+      transition: transform var(--t-fast), box-shadow var(--t-fast);
+    }
+    .provider-chip:hover { transform: scale(1.08); box-shadow: var(--shadow); }
+    .provider-chip img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; }
+    .providers-link { display: block; font-size: .75rem; color: var(--accent); margin-top: 8px; }
+    .providers-credit { font-size: .65rem; color: var(--ink-mute); margin-top: 4px; }
+
+    /* ── Vault heatmap ── */
+    .vault-heatmap { overflow-x: auto; padding: 8px 0; }
+    .vault-chart-card--wide { grid-column: 1 / -1; }
+
+    /* ── Vault director ranking ── */
+    /* Uses existing .vault-ranking styles */
+  </style>
 </head>
 <body>
 
@@ -26,12 +195,13 @@
     <nav class="kino-nav">
       <span class="kino-logo" id="homeBtn"><em>Kino</em></span>
       <div class="kino-tabs" id="tabs"></div>
+      <button data-action="theme-toggle" class="nav-icon" title="Toggle theme" style="font-size:1.1rem">☀︎</button>
       <button id="settingsBtn" class="nav-icon" title="Impostazioni">⚙</button>
-      <button id="logoutBtn" class="nav-icon" title="Esci" style="font-size:1rem">⏻</button>
+      <button id="logoutBtn"   class="nav-icon" title="Esci" style="font-size:1rem">⏻</button>
     </nav>
     <main id="view"></main>
   </div>
 
-  <script type="module" src="src/main.js?v=2"></script>
+  <script type="module" src="src/main.js?v=3"></script>
 </body>
 </html>

@@ -1,60 +1,92 @@
-/** ARCHIVE — film visti e valutati, con filtri avanzati. */
-import { getMovies } from '../data/repo.js';
+/**
+ * ARCHIVE — film visti e valutati, con filtri avanzati.
+ * Part 1: migrated from getMovies() to reactive store subscription.
+ * Re-renders grid on every Firestore snapshot (cross-tab sync, real-time).
+ */
+import { init, subscribe } from '../core/store.js';
 import i18n from '../core/i18n.js';
+import { posterImg } from '../services/tmdb.js';
 import { movieCard } from '../components/card.js';
 import { createFilterBar, filterMovies, sortMovies } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
 
 export const archive = {
-  id: 'archive', label: 'Archive', icon: '🎬',
-  _fb: null,
-  async mount(el) {
-    el.innerHTML = `
-      <div id="archFilters"></div>
-      <div class="grid" id="archGrid"></div>`;
+    id: 'archive', label: 'Archive', icon: '🎬',
+    _fb:    null,
+    _unsub: null,
 
-    const grid = el.querySelector('#archGrid');
-    skeleton(grid, 10);
+    async mount(el) {
+        el.innerHTML = `
+          <div id="archFilters"></div>
+          <div class="grid" id="archGrid"></div>`;
 
-    let movies = [];
-    try {
-      movies = (await getMovies()).filter(m => !m.isWatchlist && m.rating != null);
-    } catch (e) { grid.innerHTML = `<div class="empty"><div class="big">${i18n.t('error')}</div>${e.message}</div>`; return; }
+        const grid = el.querySelector('#archGrid');
+        _skeleton(grid, 10);
 
-    this._fb = await createFilterBar(el.querySelector('#archFilters'), {
-      filters: ['genre', 'year', 'rating', 'runtime', 'language', 'country', 'director', 'cast', 'favorite', 'addedDate'],
-      sorts: ['rating', 'year', 'title_asc', 'title_desc', 'added'],
-      defaultSort: 'rating',
-      searchPlaceholder: 'Cerca nel tuo archivio…',
-      onChange: (state, sort) => apply(state, sort)
-    });
-    const fb = this._fb;
+        // Guarantee the Firestore listener is open (idempotent)
+        await init();
 
-    const apply = (state, sort) => {
-      const q = el.querySelector('.filter-search')?.value.toLowerCase().trim() || '';
-      let list = q ? movies.filter(m => (m.title || '').toLowerCase().includes(q)) : movies;
-      list = filterMovies(list, state);
-      list = sortMovies(list, sort);
-      renderGrid(grid, list, movies);
-    };
+        let allMovies = [];
+        let _filters  = {};
+        let _sort     = 'rating';
+        let _q        = '';
 
-    apply(fb.getState(), fb.getState().sort);
-  },
-  unmount() { if (this._fb) { this._fb.destroy(); this._fb = null; } }
+        const apply = () => {
+            let list = _q
+                ? allMovies.filter(m => (m.title || '').toLowerCase().includes(_q))
+                : allMovies;
+            list = filterMovies(list, _filters);
+            list = sortMovies(list, _sort);
+            _render(grid, list, allMovies);
+        };
+
+        this._fb = await createFilterBar(el.querySelector('#archFilters'), {
+            filters: ['genre','year','rating','runtime','language','country','director','cast','favorite','addedDate'],
+            sorts:   ['rating','year','title_asc','title_desc','added'],
+            defaultSort: 'rating',
+            searchPlaceholder: 'Cerca nel tuo archivio…',
+            onSearch: () => { _q = el.querySelector('.filter-search')?.value.toLowerCase().trim() || ''; apply(); },
+            onChange: (state, sort) => { _filters = state; _sort = sort; apply(); },
+        });
+        const s0 = this._fb.getState();
+        _filters = s0; _sort = s0.sort;
+
+        // Reactive: re-render whenever Firestore data changes
+        this._unsub = subscribe('archive', ({ movies }) => {
+            allMovies = (movies || []).filter(m => !m.isWatchlist && m.rating != null);
+            apply();
+        });
+    },
+
+    unmount() {
+        if (this._fb)    { this._fb.destroy();  this._fb    = null; }
+        if (this._unsub) { this._unsub();        this._unsub = null; }
+    },
 };
 
-function renderGrid(grid, list, allMovies) {
-  grid.innerHTML = '';
-  if (!list.length) { grid.innerHTML = `<div class="empty"><div class="big">Archivio vuoto</div>Aggiungi film da Explore.</div>`; return; }
-  list.forEach(m => grid.appendChild(movieCard(m, {
-    onClick: movie => openDetail(movie, {
-      mode: 'archive',
-      onUpdate: updated => {
-        const i = allMovies.findIndex(x => x.id === updated.id);
-        if (i >= 0) Object.assign(allMovies[i], updated);
-      }
-    })
-  })));
+function _render(grid, list, allMovies) {
+    grid.innerHTML = '';
+    if (!list.length) {
+        grid.innerHTML = `<div class="empty"><div class="big">Archivio vuoto</div>Aggiungi film da Explore.</div>`;
+        return;
+    }
+    list.forEach(m => grid.appendChild(movieCard(m, {
+        onClick: movie => openDetail(movie, {
+            mode: 'archive',
+            onUpdate: updated => {
+                const i = allMovies.findIndex(x => x.id === updated.id);
+                if (i >= 0) Object.assign(allMovies[i], updated);
+            },
+        }),
+    })));
 }
 
-function skeleton(g, n) { g.innerHTML = ''; for (let i = 0; i < n; i++) { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = '<div class="poster sk"></div>'; g.appendChild(d); } }
+function _skeleton(g, n) {
+    g.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = '<div class="poster sk"></div>';
+        g.appendChild(d);
+    }
+}
