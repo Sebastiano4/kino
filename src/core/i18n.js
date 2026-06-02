@@ -97,6 +97,8 @@ const dict = {
     rewatch_label: 'Rivisto (non è la prima volta)',
     watchlist_empty: 'Watchlist vuota',
     save_from_explore: 'Salva film da Explore.',
+    archive_empty: 'Archivio vuoto',
+    add_from_explore: 'Aggiungi film da Explore.',
     no_results: 'Nessun risultato',
     tmdb_error: 'Errore TMDB',
     vault_need_at_least_imdb: 'Servono almeno 2 film con voto IMDb.',
@@ -121,6 +123,31 @@ const dict = {
     battle_edit_votes: 'Modifica voti',
     battle_votes_updated: 'Voti aggiornati.',
     battle_vs: 'VS',
+    // sorts
+    sort_popularity: 'Popolarità',
+    sort_rating: 'Valutazione',
+    sort_year: 'Anno',
+    sort_title_asc: 'Titolo A→Z',
+    sort_title_desc: 'Titolo Z→A',
+    sort_added: 'Data aggiunta',
+    sort_elo: 'Elo',
+    // status filters
+    status_watched: 'Visto',
+    status_watchlist: 'Da vedere',
+    // smart modes
+    smart_all: 'All',
+    smart_crunch: '⚡ Time Crunch',
+    smart_crunch_desc: '< 90 min',
+    smart_weekend: '🎬 Weekend',
+    smart_weekend_desc: '> 2h, top rated',
+    smart_gems: '💎 Hidden Gems',
+    smart_gems_desc: 'Under the radar',
+    smart_classics: '🎞 Classics',
+    smart_classics_desc: 'Pre-2000',
+    // search placeholders
+    search_watchlist: 'Cerca nella watchlist…',
+    search_archive: 'Cerca nel tuo archivio…',
+    search_explore: 'Cerca un film…',
   },
   en: {
     settings: 'Settings',
@@ -216,6 +243,8 @@ const dict = {
     rewatch_label: 'Rewatch (not first time)',
     watchlist_empty: 'Watchlist empty',
     save_from_explore: 'Save films from Explore.',
+    archive_empty: 'Archive empty',
+    add_from_explore: 'Add films from Explore.',
     no_results: 'No results',
     tmdb_error: 'TMDB error',
     vault_need_at_least_imdb: 'Need at least 2 films with IMDb rating.',
@@ -240,6 +269,31 @@ const dict = {
     battle_edit_votes: 'Edit ratings',
     battle_votes_updated: 'Ratings updated.',
     battle_vs: 'VS',
+    // sorts
+    sort_popularity: 'Popularity',
+    sort_rating: 'Rating',
+    sort_year: 'Year',
+    sort_title_asc: 'Title A→Z',
+    sort_title_desc: 'Title Z→A',
+    sort_added: 'Date added',
+    sort_elo: 'Elo',
+    // status filters
+    status_watched: 'Watched',
+    status_watchlist: 'Watchlist',
+    // smart modes
+    smart_all: 'All',
+    smart_crunch: '⚡ Time Crunch',
+    smart_crunch_desc: '< 90 min',
+    smart_weekend: '🎬 Weekend',
+    smart_weekend_desc: '> 2h, top rated',
+    smart_gems: '💎 Hidden Gems',
+    smart_gems_desc: 'Under the radar',
+    smart_classics: '🎞 Classics',
+    smart_classics_desc: 'Pre-2000',
+    // search placeholders
+    search_watchlist: 'Search watchlist…',
+    search_archive: 'Search your archive…',
+    search_explore: 'Search a film…',
   }
 };
 

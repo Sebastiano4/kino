@@ -14,40 +14,40 @@ import { movieCard } from '../components/card.js';
 import { createFilterBar, filterMovies, sortMovies } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
 
-// Smart-mode definitions
+// Smart-mode definitions (labels and descriptions are translated via i18n)
 const SMART_MODES = [
     {
         id: 'all',
-        label: 'All',
+        labelKey: 'smart_all',
         icon: '📋',
         filter: () => true,
     },
     {
         id: 'crunch',
-        label: '⚡ Time Crunch',
+        labelKey: 'smart_crunch',
         icon: '',
-        description: '< 90 min',
+        descKey: 'smart_crunch_desc',
         filter: m => (m.runtime || 999) < 90,
     },
     {
         id: 'weekend',
-        label: '🎬 Weekend',
+        labelKey: 'smart_weekend',
         icon: '',
-        description: '> 2h, top rated',
+        descKey: 'smart_weekend_desc',
         filter: m => (m.runtime || 0) >= 120 && (parseFloat(m.imdbRating) || 0) >= 7,
     },
     {
         id: 'gems',
-        label: '💎 Hidden Gems',
+        labelKey: 'smart_gems',
         icon: '',
-        description: 'Under the radar',
+        descKey: 'smart_gems_desc',
         filter: m => (parseFloat(m.imdbRating) || 0) > 0 && parseFloat(m.imdbRating) < 7,
     },
     {
         id: 'classics',
-        label: '🎞 Classics',
+        labelKey: 'smart_classics',
         icon: '',
-        description: 'Pre-2000',
+        descKey: 'smart_classics_desc',
         filter: m => (Number(m.year) || 9999) < 2000,
     },
 ];
@@ -98,7 +98,7 @@ export const watchlist = {
             filters: ['genre','year','rating','runtime','language','country','director','cast','favorite','addedDate'],
             sorts:   ['added','year','title_asc','title_desc','rating'],
             defaultSort: 'added',
-            searchPlaceholder: 'Cerca nella watchlist…',
+            searchPlaceholder: i18n.t('search_watchlist'),
             onSearch: () => { _q = el.querySelector('.filter-search')?.value.toLowerCase().trim() || ''; apply(); },
             onChange: (state, sort) => { _filters = state; _sort = sort; apply(); },
         });
@@ -124,7 +124,9 @@ function _buildSmartBar(container, onChange) {
         const btn = document.createElement('button');
         btn.className     = `smart-pill${mode.id === 'all' ? ' active' : ''}`;
         btn.dataset.mode  = mode.id;
-        btn.innerHTML     = `${mode.label}${mode.description ? `<small>${mode.description}</small>` : ''}`;
+        const label = i18n.t(mode.labelKey);
+        const desc = mode.descKey ? i18n.t(mode.descKey) : '';
+        btn.innerHTML     = `${label}${desc ? `<small>${desc}</small>` : ''}`;
         btn.addEventListener('click', () => {
             container.querySelectorAll('.smart-pill').forEach(p => p.classList.remove('active'));
             btn.classList.add('active');

@@ -25,7 +25,7 @@ export const explore = {
       filters: ['genre', 'year', 'rating', 'runtime', 'language', 'country'],
       sorts: ['popularity', 'rating', 'year', 'title_asc', 'title_desc'],
       defaultSort: 'popularity',
-      searchPlaceholder: 'Cerca un film…',
+      searchPlaceholder: i18n.t('search_explore'),
       onSearch: () => { reset(); mode = 'search'; loadNext(); },
       onChange: () => {
         if (el.querySelector('.filter-search')?.value.trim()) return;

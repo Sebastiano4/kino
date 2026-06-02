@@ -44,7 +44,7 @@ export const archive = {
             filters: ['genre','year','rating','runtime','language','country','director','cast','favorite','addedDate'],
             sorts:   ['rating','year','title_asc','title_desc','added'],
             defaultSort: 'rating',
-            searchPlaceholder: 'Cerca nel tuo archivio…',
+            searchPlaceholder: i18n.t('search_archive'),
             onSearch: () => { _q = el.querySelector('.filter-search')?.value.toLowerCase().trim() || ''; apply(); },
             onChange: (state, sort) => { _filters = state; _sort = sort; apply(); },
         });
@@ -67,7 +67,7 @@ export const archive = {
 function _render(grid, list, allMovies) {
     grid.innerHTML = '';
     if (!list.length) {
-        grid.innerHTML = `<div class="empty"><div class="big">Archivio vuoto</div>Aggiungi film da Explore.</div>`;
+        grid.innerHTML = `<div class="empty"><div class="big">${i18n.t('archive_empty')}</div>${i18n.t('add_from_explore')}</div>`;
         return;
     }
     list.forEach(m => grid.appendChild(movieCard(m, {

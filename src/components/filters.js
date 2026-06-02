@@ -110,8 +110,8 @@ export async function createFilterBar(container, config = {}) {
   }
   if (filters.includes('status')) {
     html += _section(i18n.t('status'), `<div class="filter-pills" data-filter="status">
-      <button class="filter-pill" data-value="watched">Visto</button>
-      <button class="filter-pill" data-value="watchlist">Da vedere</button></div>`);
+      <button class="filter-pill" data-value="watched">${i18n.t('status_watched')}</button>
+      <button class="filter-pill" data-value="watchlist">${i18n.t('status_watchlist')}</button></div>`);
   }
   if (filters.includes('favorite')) {
     html += _section(i18n.t('favorites'), `<div class="filter-pills" data-filter="favorite">
@@ -395,8 +395,16 @@ function _updateCount(toggleBtn, state) {
 }
 
 function _sortLabel(key) {
-  return { popularity: 'Popolarità', rating: 'Valutazione', year: 'Anno',
-    title_asc: 'Titolo A→Z', title_desc: 'Titolo Z→A', added: 'Data aggiunta', elo: 'Elo' }[key] || key;
+  const map = {
+    popularity: 'sort_popularity',
+    rating: 'sort_rating',
+    year: 'sort_year',
+    title_asc: 'sort_title_asc',
+    title_desc: 'sort_title_desc',
+    added: 'sort_added',
+    elo: 'sort_elo'
+  };
+  return i18n.t(map[key] || key);
 }
 
 function _section(label, content) {

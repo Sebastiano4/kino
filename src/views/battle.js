@@ -249,7 +249,7 @@ function _showResult(arena, res, winnerIsA, deltaA, deltaB, isUpset, onNext, onE
     }
 }
 
-function _fmtDelta(n) { const v = Number(n || 0); return `${v > 0 ? '+' : ''}${v}`; }
+function _fmtDelta(n) { const v = Number(n || 0).toFixed(2); return `${v > 0 ? '+' : ''}${v}`; }
 
 function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
