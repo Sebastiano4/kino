@@ -2,6 +2,7 @@
 import { getMovies, updateMovie, addMatch } from '../data/repo.js';
 import { pickPair, resolveMatch, tierOf, seedElo } from '../core/elo.js';
 import { posterUrl } from '../services/tmdb.js';
+import i18n from '../core/i18n.js';
 
 export const battle = {
     id: 'battle', label: 'Battle', icon: '⚔️',
@@ -10,7 +11,10 @@ export const battle = {
         let movies = [];
         try { movies = (await getMovies()).filter(m => m.rating != null); }
         catch (e) { el.innerHTML = err(e.message); return; }
-        if (movies.length < 2) { el.innerHTML = `<div class="center-screen"><div class="empty"><div class="big">Servono almeno 2 film valutati</div></div></div>`; return; }
+        if (movies.length < 2) {
+            el.innerHTML = `<div class="center-screen"><div class="empty"><div class="big">${i18n.t('need_at_least_2_rated')}</div></div></div>`;
+            return;
+        }
 
         const round = () => {
             const pair = pickPair(movies);
@@ -18,10 +22,10 @@ export const battle = {
             const [a, b] = pair;
             const eloA = seedElo(a), eloB = seedElo(b);
             el.innerHTML = `
-              <div class="battle-header"><h2 class="serif accent">Quale preferisci?</h2></div>
+              <div class="battle-header"><h2 class="serif accent">${i18n.t('battle_prompt')}</h2></div>
               <div class="battle-arena">
                 ${side(a, 'a', eloA)}
-                <div class="battle-vs">VS</div>
+                <div class="battle-vs">${i18n.t('battle_vs')}</div>
                 ${side(b, 'b', eloB)}
               </div>`;
             el.querySelector('#pick-a').onclick = () => choose(a, b, true, eloA, eloB);
@@ -33,9 +37,9 @@ export const battle = {
             const deltaA = res.a.eloRating - oldEloA;
             const deltaB = res.b.eloRating - oldEloB;
             const winner = winnerIsA ? a : b;
-            const loser = winnerIsA ? b : a;
+            const loser  = winnerIsA ? b : a;
             const winnerImdb = parseFloat(winner.imdbRating) || parseFloat(winner.rating) || 0;
-            const loserImdb = parseFloat(loser.imdbRating) || parseFloat(loser.rating) || 0;
+            const loserImdb  = parseFloat(loser.imdbRating)  || parseFloat(loser.rating)  || 0;
             const isUpset = winnerImdb > 0 && loserImdb > 0 && winnerImdb < loserImdb;
 
             showResult(el, res, winnerIsA, deltaA, deltaB, isUpset, () => {
@@ -77,6 +81,11 @@ export const battle = {
     }
 };
 
+function formatDelta(n) {
+    const num = Number(n || 0);
+    return `${num > 0 ? '+' : ''}${num}`;
+}
+
 function side(m, k, elo) {
     const tier = tierOf(elo);
     return `<button id="pick-${k}" class="battle-card">
@@ -93,14 +102,14 @@ function showResult(el, res, winnerIsA, deltaA, deltaB, isUpset, onNext, onEditR
     const l = winnerIsA ? res.b : res.a;
 
     el.innerHTML = `
-      <div class="battle-header"><h2 class="serif accent">Risultato</h2></div>
+      <div class="battle-header"><h2 class="serif accent">${i18n.t('battle_result')}</h2></div>
       <div class="battle-arena">
         <div class="battle-result-card ${winnerIsA ? 'winner' : 'loser'}">
           <div class="poster"><img alt="" src="${res.a.poster || posterUrl(res.a.poster_path)}"></div>
           <div class="battle-info">
             <span class="title">${esc(res.a.title)}</span>
             <span class="battle-elo">${res.a.eloRating}
-              <span class="elo-delta ${deltaA > 0 ? 'up' : 'down'}">${deltaA > 0 ? '+' : ''}${deltaA}</span>
+              <span class="elo-delta ${deltaA > 0 ? 'up' : 'down'}">${formatDelta(deltaA)}</span>
             </span>
           </div>
         </div>
@@ -110,18 +119,18 @@ function showResult(el, res, winnerIsA, deltaA, deltaB, isUpset, onNext, onEditR
           <div class="battle-info">
             <span class="title">${esc(res.b.title)}</span>
             <span class="battle-elo">${res.b.eloRating}
-              <span class="elo-delta ${deltaB > 0 ? 'up' : 'down'}">${deltaB > 0 ? '+' : ''}${deltaB}</span>
+              <span class="elo-delta ${deltaB > 0 ? 'up' : 'down'}">${formatDelta(deltaB)}</span>
             </span>
           </div>
         </div>
       </div>
       ${isUpset ? `<div class="battle-upset" id="upsetBanner">
         <span class="upset-icon">⚡</span>
-        <span>Upset! Il film con IMDb più basso ha vinto.</span>
-        <button class="btn btn-sm" id="upsetEdit">Modifica voti</button>
+        <span>${i18n.t('battle_upset_msg')}</span>
+        <button class="btn btn-sm" id="upsetEdit">${i18n.t('battle_edit_votes')}</button>
       </div>` : ''}
       <div class="battle-next">
-        <button class="btn btn-accent" id="battleNext">Prossimo duello</button>
+        <button class="btn btn-accent" id="battleNext">${i18n.t('battle_next')}</button>
       </div>`;
 
     el.querySelector('#battleNext').onclick = onNext;
@@ -139,19 +148,19 @@ function showResult(el, res, winnerIsA, deltaA, deltaB, isUpset, onNext, onEditR
                   <span>${esc(l.title)}</span>
                   <input type="number" id="upsetRateL" min="1" max="10" step="0.5" value="${l.rating || ''}" class="filter-input" style="width:70px">
                 </div>
-                <button class="btn btn-sm btn-accent" id="upsetSave">Salva</button>
+                <button class="btn btn-sm btn-accent" id="upsetSave">${i18n.t('save')}</button>
               </div>`;
             el.querySelector('#upsetSave').addEventListener('click', async () => {
                 const rW = parseFloat(el.querySelector('#upsetRateW').value);
                 const rL = parseFloat(el.querySelector('#upsetRateL').value);
                 if (isNaN(rW) || isNaN(rL) || rW < 1 || rW > 10 || rL < 1 || rL > 10) return;
                 await onEditRatings(rW, rL);
-                banner.innerHTML = `<span class="upset-icon">✓</span><span>Voti aggiornati.</span>`;
+                banner.innerHTML = `<span class="upset-icon">✓</span><span>${i18n.t('battle_votes_updated')}</span>`;
                 banner.classList.add('upset-saved');
             });
         });
     }
 }
 
-function err(msg){return `<div class="center-screen"><div class="empty"><div class="big">Errore</div>${msg}</div></div>`;}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function err(msg) { return `<div class="center-screen"><div class="empty"><div class="big">Errore</div>${msg}</div></div>`; }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

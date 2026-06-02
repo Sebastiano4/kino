@@ -1,5 +1,7 @@
 /** Watched modal — mark a film as watched with rating, date, notes. */
 
+import i18n from '../core/i18n.js';
+
 export function openWatchedModal(movie, options = {}) {
   const init = {
     rating: options.initialRating || 7,
@@ -14,7 +16,7 @@ export function openWatchedModal(movie, options = {}) {
     <div class="modal" style="max-width:480px">
       <button class="modal-close">&times;</button>
       <div style="padding:28px">
-        <h2 class="modal-title" style="margin-bottom:20px">Segna come visto</h2>
+        <h2 class="modal-title" style="margin-bottom:20px">${i18n.t('mark_watched')}</h2>
         <div class="watched-film">
           <img src="${esc(movie.poster || '')}" alt="">
           <div>
@@ -24,7 +26,7 @@ export function openWatchedModal(movie, options = {}) {
         </div>
 
         <div class="watched-field">
-          <label class="filter-section-label">Il tuo voto</label>
+          <label class="filter-section-label">${i18n.t('save')}</label>
           <div class="rating-control">
             <input type="range" class="rating-slider" min="1" max="10" step="0.5" value="${init.rating}" id="wRating">
             <span class="rating-display" id="wRatingVal">★ ${Number(init.rating).toFixed(1)}</span>
@@ -32,25 +34,25 @@ export function openWatchedModal(movie, options = {}) {
         </div>
 
         <div class="watched-field">
-          <label class="filter-section-label">Data di visione</label>
+          <label class="filter-section-label">${i18n.t('seen_on')}</label>
           <input type="date" class="filter-input" id="wDate" value="${init.date}" style="max-width:200px">
         </div>
 
         <div class="watched-field">
-          <label class="filter-section-label">Note personali</label>
-          <textarea class="filter-input" id="wNotes" rows="3" placeholder="Le tue impressioni…">${esc(init.notes)}</textarea>
+          <label class="filter-section-label">${i18n.t('impressions')}</label>
+          <textarea class="filter-input" id="wNotes" rows="3" placeholder="${i18n.t('impressions')}">${esc(init.notes)}</textarea>
         </div>
 
         <div class="watched-field">
           <label class="toggle-row">
             <input type="checkbox" id="wRewatch" ${init.rewatch ? 'checked' : ''}>
-            <span>Rivisto (non è la prima volta)</span>
+            <span>${i18n.t('rewatch_label')}</span>
           </label>
         </div>
 
         <div style="display:flex;gap:10px;margin-top:24px">
-          <button class="btn btn-accent" id="wSave">Salva</button>
-          <button class="btn" id="wCancel">Annulla</button>
+          <button class="btn btn-accent" id="wSave">${i18n.t('save')}</button>
+          <button class="btn" id="wCancel">${i18n.t('cancel')}</button>
         </div>
       </div>
     </div>`;
@@ -79,11 +81,11 @@ export function openWatchedModal(movie, options = {}) {
       isWatchlist: false,
     };
     const btn = overlay.querySelector('#wSave');
-    btn.disabled = true; btn.textContent = 'Salvataggio…';
+    btn.disabled = true; btn.textContent = i18n.t('saving');
     try {
       if (options.onSave) await options.onSave(data);
       close();
-    } catch { btn.textContent = 'Errore'; btn.disabled = false; }
+    } catch { btn.textContent = i18n.t('error'); btn.disabled = false; }
   });
 
   return { close };

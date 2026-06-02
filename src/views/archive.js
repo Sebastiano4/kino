@@ -1,5 +1,6 @@
 /** ARCHIVE — film visti e valutati, con filtri avanzati. */
 import { getMovies } from '../data/repo.js';
+import i18n from '../core/i18n.js';
 import { movieCard } from '../components/card.js';
 import { createFilterBar, filterMovies, sortMovies } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
@@ -18,7 +19,7 @@ export const archive = {
     let movies = [];
     try {
       movies = (await getMovies()).filter(m => !m.isWatchlist && m.rating != null);
-    } catch (e) { grid.innerHTML = `<div class="empty"><div class="big">Errore</div>${e.message}</div>`; return; }
+    } catch (e) { grid.innerHTML = `<div class="empty"><div class="big">${i18n.t('error')}</div>${e.message}</div>`; return; }
 
     this._fb = await createFilterBar(el.querySelector('#archFilters'), {
       filters: ['genre', 'year', 'rating', 'runtime', 'language', 'country', 'director', 'cast', 'favorite', 'addedDate'],

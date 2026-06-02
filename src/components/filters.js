@@ -1,5 +1,6 @@
 /** Filter bar + panel — reusable across views. */
 import { genreList } from '../services/tmdb.js';
+import i18n from '../core/i18n.js';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' }, { code: 'it', name: 'Italiano' },
@@ -24,6 +25,9 @@ export async function createFilterBar(container, config = {}) {
     catch { cachedGenres = []; }
   }
 
+  // Ensure container is clean: remove any previous filter bar/panel to avoid duplicates
+  container.querySelectorAll('.filter-bar, .filter-panel').forEach(n => n.remove());
+
   const state = {
     genre: [], yearMin: '', yearMax: '',
     ratingMin: '', ratingMax: '', runtime: '',
@@ -36,7 +40,7 @@ export async function createFilterBar(container, config = {}) {
   bar.className = 'filter-bar';
   bar.innerHTML = `
     ${searchPlaceholder ? `<div class="filter-search-wrap"><input class="filter-search" placeholder="${esc(searchPlaceholder)}"></div>` : ''}
-    <button class="filter-toggle">Filtri</button>
+    <button class="filter-toggle">${i18n.t('filters')}</button>
     ${sorts.length ? `<div class="sort-wrap"><select class="sort-select">
       ${sorts.map(s => `<option value="${s}" ${s === state.sort ? 'selected' : ''}>${sortLabel(s)}</option>`).join('')}
     </select></div>` : ''}`;
@@ -47,57 +51,57 @@ export async function createFilterBar(container, config = {}) {
   let html = '';
 
   if (filters.includes('genre') && cachedGenres?.length) {
-    html += section('Genere', `<div class="filter-pills" data-filter="genre">
+    html += section(i18n.t('genre'), `<div class="filter-pills" data-filter="genre">
       ${cachedGenres.map(g => `<button class="filter-pill" data-id="${g.id}">${esc(g.name)}</button>`).join('')}</div>`);
   }
   if (filters.includes('year')) {
-    html += section('Anno', `<div class="filter-row">
+    html += section(i18n.t('year'), `<div class="filter-row">
       <input class="filter-input" data-filter="yearMin" type="number" placeholder="Da" min="1900" max="2030">
       <input class="filter-input" data-filter="yearMax" type="number" placeholder="A" min="1900" max="2030"></div>`);
   }
   if (filters.includes('rating')) {
-    html += section('Valutazione IMDb', `<div class="filter-row">
+    html += section(i18n.t('rating'), `<div class="filter-row">
       <input class="filter-input" data-filter="ratingMin" type="number" placeholder="Min" min="0" max="10" step="0.1">
       <input class="filter-input" data-filter="ratingMax" type="number" placeholder="Max" min="0" max="10" step="0.1"></div>`);
   }
   if (filters.includes('runtime')) {
-    html += section('Durata', `<div class="filter-pills" data-filter="runtime">
+    html += section(i18n.t('runtime'), `<div class="filter-pills" data-filter="runtime">
       <button class="filter-pill" data-value="short">&lt; 90 min</button>
       <button class="filter-pill" data-value="medium">90–150 min</button>
       <button class="filter-pill" data-value="long">&gt; 150 min</button></div>`);
   }
   if (filters.includes('language')) {
-    html += section('Lingua', `<select class="filter-select" data-filter="language">
-      <option value="">Tutte</option>
+    html += section(i18n.t('languageLabel'), `<select class="filter-select" data-filter="language">
+      <option value="">${i18n.t('all_label')}</option>
       ${LANGUAGES.map(l => `<option value="${l.code}">${l.name}</option>`).join('')}</select>`);
   }
   if (filters.includes('country')) {
-    html += section('Paese', `<input class="filter-input" data-filter="country" type="text" placeholder="Es: Italy, USA…" style="max-width:280px">`);
+    html += section(i18n.t('country'), `<input class="filter-input" data-filter="country" type="text" placeholder="${i18n.t('country_example')}" style="max-width:280px">`);
   }
   if (filters.includes('director')) {
-    html += section('Regista', `<input class="filter-input" data-filter="director" type="text" placeholder="Nome regista…" style="max-width:280px">`);
+    html += section(i18n.t('director'), `<input class="filter-input" data-filter="director" type="text" placeholder="${i18n.t('director_placeholder')}" style="max-width:280px">`);
   }
   if (filters.includes('cast')) {
-    html += section('Cast', `<input class="filter-input" data-filter="cast" type="text" placeholder="Nome attore…" style="max-width:280px">`);
+    html += section(i18n.t('cast'), `<input class="filter-input" data-filter="cast" type="text" placeholder="${i18n.t('cast_placeholder')}" style="max-width:280px">`);
   }
   if (filters.includes('status')) {
-    html += section('Stato', `<div class="filter-pills" data-filter="status">
+    html += section(i18n.t('status'), `<div class="filter-pills" data-filter="status">
       <button class="filter-pill" data-value="watched">Visto</button>
       <button class="filter-pill" data-value="watchlist">Da vedere</button></div>`);
   }
   if (filters.includes('favorite')) {
-    html += section('Preferiti', `<div class="filter-pills" data-filter="favorite">
-      <button class="filter-pill" data-value="true">Solo preferiti</button></div>`);
+    html += section(i18n.t('favorites'), `<div class="filter-pills" data-filter="favorite">
+      <button class="filter-pill" data-value="true">${i18n.t('only_favorites')}</button></div>`);
   }
   if (filters.includes('addedDate')) {
-    html += section('Aggiunto', `<div class="filter-pills" data-filter="addedRange">
-      <button class="filter-pill" data-value="week">Ultima settimana</button>
-      <button class="filter-pill" data-value="month">Ultimo mese</button>
-      <button class="filter-pill" data-value="3months">Ultimi 3 mesi</button>
-      <button class="filter-pill" data-value="year">Ultimo anno</button></div>`);
+    html += section(i18n.t('added'), `<div class="filter-pills" data-filter="addedRange">
+      <button class="filter-pill" data-value="week">${i18n.t('last_week')}</button>
+      <button class="filter-pill" data-value="month">${i18n.t('last_month')}</button>
+      <button class="filter-pill" data-value="3months">${i18n.t('last_3_months')}</button>
+      <button class="filter-pill" data-value="year">${i18n.t('last_year')}</button></div>`);
   }
 
-  html += `<button class="filter-clear" data-action="clear">Pulisci filtri</button>`;
+  html += `<button class="filter-clear" data-action="clear">${i18n.t('clearFilters')}</button>`;
   panel.innerHTML = html;
   container.appendChild(bar);
   container.appendChild(panel);
@@ -202,14 +206,19 @@ export async function createFilterBar(container, config = {}) {
 
   function updateCount() {
     const n = activeCount();
-    toggleBtn.innerHTML = n > 0 ? `Filtri <span class="filter-count">${n}</span>` : 'Filtri';
+    toggleBtn.innerHTML = n > 0 ? `${i18n.t('filters')} <span class="filter-count">${n}</span>` : i18n.t('filters');
   }
 
   function emit() { onChange({ ...state, genre: [...state.genre] }, state.sort); }
 
   return {
     getState: () => ({ ...state, genre: [...state.genre] }),
-    destroy: () => { bar.remove(); panel.remove(); clearTimeout(debounce); }
+    destroy: () => {
+      // defensively remove elements and timers to avoid duplicates/leaks
+      try { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); } catch (e) {}
+      try { if (panel && panel.parentNode) panel.parentNode.removeChild(panel); } catch (e) {}
+      try { clearTimeout(debounce); } catch (e) {}
+    }
   };
 }
 

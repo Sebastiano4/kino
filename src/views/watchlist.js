@@ -1,5 +1,6 @@
 /** WATCHLIST — film da vedere, con filtri avanzati. */
 import { getMovies } from '../data/repo.js';
+import i18n from '../core/i18n.js';
 import { movieCard } from '../components/card.js';
 import { createFilterBar, filterMovies, sortMovies } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
@@ -18,7 +19,7 @@ export const watchlist = {
     let movies = [];
     try {
       movies = (await getMovies()).filter(m => m.isWatchlist);
-    } catch (e) { grid.innerHTML = `<div class="empty"><div class="big">Errore</div>${e.message}</div>`; return; }
+    } catch (e) { grid.innerHTML = `<div class="empty"><div class="big">${i18n.t('error')}</div>${e.message}</div>`; return; }
 
     this._fb = await createFilterBar(el.querySelector('#wlFilters'), {
       filters: ['genre', 'year', 'rating', 'runtime', 'language', 'country', 'director', 'cast', 'favorite', 'addedDate'],
@@ -44,7 +45,7 @@ export const watchlist = {
 
 function renderGrid(grid, list, allMovies) {
   grid.innerHTML = '';
-  if (!list.length) { grid.innerHTML = `<div class="empty"><div class="big">Watchlist vuota</div>Salva film da Explore.</div>`; return; }
+  if (!list.length) { grid.innerHTML = `<div class="empty"><div class="big">${i18n.t('watchlist_empty')}</div>${i18n.t('save_from_explore')}</div>`; return; }
   list.forEach(m => grid.appendChild(movieCard(m, {
     onClick: movie => openDetail(movie, {
       mode: 'watchlist',

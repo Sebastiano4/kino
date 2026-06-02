@@ -1,6 +1,7 @@
 /** SETTINGS — account, preferenze, gestione dati. */
 import { getUser } from '../core/auth.js';
 import { getMovies, exportMoviesJSON, exportMoviesCSV, importMoviesJSON, getProfile, saveProfile } from '../data/repo.js';
+import i18n from '../core/i18n.js';
 
 export const settings = {
   id: 'settings', label: 'Settings', icon: '⚙️', hidden: true,
@@ -13,16 +14,18 @@ export const settings = {
     try { [movies, profile] = await Promise.all([getMovies(), getProfile()]); } catch {}
     const watched = movies.filter(m => !m.isWatchlist && m.rating != null);
     const wl = movies.filter(m => m.isWatchlist);
-    const displayName = profile.displayName || user?.displayName || 'Utente';
+    const displayName = profile.displayName || user?.displayName || (i18n.t('profile') || 'Utente');
     const photoURL = profile.photoURL || user?.photoURL || '';
     const lang = profile.language || 'it';
+    // ensure i18n current language matches saved preference for correct initial rendering
+    if (i18n.getLanguage() !== lang) i18n.setLanguage(lang);
 
     el.innerHTML = `
       <div class="settings-page">
-        <h2 class="serif accent" style="margin-bottom:28px">Impostazioni</h2>
+        <h2 class="serif accent" style="margin-bottom:28px">${i18n.t('settings')}</h2>
 
         <div class="settings-section">
-          <h3>Profilo</h3>
+          <h3>${i18n.t('profile')}</h3>
           <div class="settings-profile">
             <div class="settings-avatar-wrap">
               <img src="${esc(photoURL)}" class="settings-avatar" alt="" referrerpolicy="no-referrer" id="setAvatar">
@@ -39,18 +42,18 @@ export const settings = {
               <div class="settings-email">${esc(user?.email || '')}</div>
             </div>
           </div>
-          <button class="btn btn-sm btn-accent" id="setSaveProfile" style="margin-top:8px">Salva profilo</button>
+          <button class="btn btn-sm btn-accent" id="setSaveProfile" style="margin-top:8px">${i18n.t('saveProfile')}</button>
           <div id="setProfileMsg" style="font-size:.82rem;color:var(--green);margin-top:6px;display:none"></div>
         </div>
 
         <div class="settings-section">
-          <h3>Preferenze</h3>
+          <h3>${i18n.t('preferences')}</h3>
           <div class="settings-row">
-            <span class="settings-label">Tema</span>
+            <span class="settings-label">${i18n.t('theme')}</span>
             <span class="settings-value">Dark</span>
           </div>
           <div class="settings-row">
-            <span class="settings-label">Pagina iniziale</span>
+            <span class="settings-label">${i18n.t('landing')}</span>
             <select class="filter-select" id="setLanding" style="min-width:120px">
               <option value="home" ${profile.landing === 'home' || !profile.landing ? 'selected' : ''}>Home</option>
               <option value="explore" ${profile.landing === 'explore' ? 'selected' : ''}>Explore</option>
@@ -59,7 +62,7 @@ export const settings = {
             </select>
           </div>
           <div class="settings-row">
-            <span class="settings-label">Lingua</span>
+            <span class="settings-label">${i18n.t('language')}</span>
             <select class="filter-select" id="setLang" style="min-width:120px">
               <option value="it" ${lang === 'it' ? 'selected' : ''}>Italiano</option>
               <option value="en" ${lang === 'en' ? 'selected' : ''}>English</option>
@@ -68,24 +71,24 @@ export const settings = {
         </div>
 
         <div class="settings-section">
-          <h3>I tuoi dati</h3>
+          <h3>${i18n.t('your_data')}</h3>
           <div class="settings-row">
-            <span class="settings-label">Film visti</span>
+            <span class="settings-label">${i18n.t('films_seen')}</span>
             <span class="settings-value mono">${watched.length}</span>
           </div>
           <div class="settings-row">
-            <span class="settings-label">In watchlist</span>
+            <span class="settings-label">${i18n.t('in_watchlist')}</span>
             <span class="settings-value mono">${wl.length}</span>
           </div>
           <div class="settings-row">
-            <span class="settings-label">Totale</span>
+            <span class="settings-label">${i18n.t('total_label')}</span>
             <span class="settings-value mono">${movies.length}</span>
           </div>
           <div class="settings-actions">
-            <button class="btn btn-sm" id="setExpCSV">Esporta CSV</button>
-            <button class="btn btn-sm" id="setExpJSON">Esporta JSON</button>
+            <button class="btn btn-sm" id="setExpCSV">${i18n.t('export_csv')}</button>
+            <button class="btn btn-sm" id="setExpJSON">${i18n.t('export_json')}</button>
             <label class="btn btn-sm" style="cursor:pointer">
-              Importa JSON
+              ${i18n.t('import_json')}
               <input type="file" accept=".json" id="setImpJSON" hidden>
             </label>
           </div>
@@ -93,13 +96,13 @@ export const settings = {
         </div>
 
         <div class="settings-section">
-          <h3>Info</h3>
+          <h3>${i18n.t('info_label')}</h3>
           <div class="settings-row">
-            <span class="settings-label">Versione</span>
+            <span class="settings-label">${i18n.t('version_label')}</span>
             <span class="settings-value mono">1.2.0</span>
           </div>
           <div class="settings-row">
-            <span class="settings-label">Progetto</span>
+            <span class="settings-label">${i18n.t('project_label')}</span>
             <span class="settings-value">Kino</span>
           </div>
         </div>
@@ -111,14 +114,14 @@ export const settings = {
       const msg = el.querySelector('#setProfileMsg');
       if (!name) return;
       msg.style.display = 'block'; msg.style.color = 'var(--ink-dim)';
-      msg.textContent = 'Salvataggio…';
+      msg.textContent = i18n.t('saving');
       try {
         await saveProfile({ displayName: name });
         msg.style.color = 'var(--green)';
-        msg.textContent = 'Profilo aggiornato.';
+        msg.textContent = i18n.t('profileUpdated');
       } catch (e) {
         msg.style.color = 'var(--red)';
-        msg.textContent = `Errore: ${e.message}`;
+        msg.textContent = `${i18n.t('error')}: ${e.message}`;
       }
     });
 
@@ -132,10 +135,10 @@ export const settings = {
         el.querySelector('#setAvatar').src = dataUrl;
         await saveProfile({ photoURL: dataUrl });
         msg.style.display = 'block'; msg.style.color = 'var(--green)';
-        msg.textContent = 'Foto aggiornata.';
+        msg.textContent = i18n.t('photo_updated');
       } catch (e) {
         msg.style.display = 'block'; msg.style.color = 'var(--red)';
-        msg.textContent = `Errore foto: ${e.message}`;
+        msg.textContent = `${i18n.t('avatarError')}: ${e.message}`;
       }
     });
 
@@ -144,9 +147,13 @@ export const settings = {
       try { await saveProfile({ landing: e.target.value }); } catch {}
     });
 
-    // Language preference
+    // Language preference: save + set i18n and re-render active view
     el.querySelector('#setLang').addEventListener('change', async (e) => {
-      try { await saveProfile({ language: e.target.value }); } catch {}
+      const newLang = e.target.value;
+      try {
+        await saveProfile({ language: newLang });
+        i18n.setLanguage(newLang);
+      } catch {}
     });
 
     // Export
@@ -159,17 +166,17 @@ export const settings = {
       if (!file) return;
       const msg = el.querySelector('#setImportMsg');
       msg.style.display = 'block'; msg.style.color = 'var(--ink-dim)';
-      msg.textContent = 'Importazione in corso…';
-      try {
+      msg.textContent = i18n.t('saving');
+        try {
         const text = await file.text();
         const data = JSON.parse(text);
-        if (!Array.isArray(data)) throw new Error('Il file deve contenere un array di film');
+        if (!Array.isArray(data)) throw new Error(i18n.t('invalid_json_array'));
         const count = await importMoviesJSON(data);
         msg.style.color = 'var(--green)';
-        msg.textContent = `Importati ${count} film.`;
+        msg.textContent = i18n.t('import_success').replace('{count}', String(count));
       } catch (err) {
         msg.style.color = 'var(--red)';
-        msg.textContent = `Errore: ${err.message}`;
+        msg.textContent = `${i18n.t('error')}: ${err.message}`;
       }
     });
   }

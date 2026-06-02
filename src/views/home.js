@@ -3,6 +3,7 @@ import { getMovies } from '../data/repo.js';
 import { discoverMovies, posterUrl, backdropUrl, movieDetails } from '../services/tmdb.js';
 import { openDetail } from '../components/detail.js';
 import * as router from '../core/router.js';
+import i18n from '../core/i18n.js';
 
 export const home = {
   id: 'home', label: 'Home', icon: '🏠', hidden: true,
@@ -47,14 +48,14 @@ export const home = {
       ${heroFilm ? heroSection(heroFilm, heroBg) : welcomeSection()}
 
       <div class="stats-bar" style="margin-top:-20px;position:relative;z-index:1">
-        ${stat('Visti', watched.length)}
-        ${stat('Watchlist', wl.length)}
-        ${stat('Voto medio', avgRating)}
-        ${stat('Preferiti', favorites.length)}
+        ${stat(i18n.t('stat_seen'), watched.length)}
+        ${stat(i18n.t('stat_watchlist'), wl.length)}
+        ${stat(i18n.t('stat_avg'), avgRating)}
+        ${stat(i18n.t('stat_favorites'), favorites.length)}
       </div>
 
-      ${watched.length ? sectionHTML('Visti di recente', watched.slice(0, 12), 'archive') : ''}
-      ${wl.length ? sectionHTML('Nella tua watchlist', wl.slice(0, 12), 'watchlist') : ''}
+      ${watched.length ? sectionHTML(i18n.t('recent_seen'), watched.slice(0, 12), 'archive') : ''}
+      ${wl.length ? sectionHTML(i18n.t('in_your_watchlist'), wl.slice(0, 12), 'watchlist') : ''}
       ${trending.length ? trendingSection(trending) : ''}
     `;
 
@@ -99,14 +100,14 @@ function heroSection(m, bg) {
       : [];
   const genres = genreNames.slice(0, 3).join(', ');
   const meta = [m.year, genres].filter(Boolean).join('<span class="sep"> · </span>');
-  return `
+    return `
     <section class="hero" style="${bg ? `background-image:url(${bg})` : ''}">
       <div class="hero-content">
-        <div class="hero-label">Il tuo film preferito</div>
+        <div class="hero-label">${i18n.t('hero_label')}</div>
         <h1 class="hero-title">${esc(m.title)}</h1>
         <div class="hero-meta">${meta}${m.rating ? ` <span class="sep">·</span> ★ ${Number(m.rating).toFixed(1)}` : ''}</div>
         <div class="hero-actions">
-          <button class="btn btn-accent" data-action="hero-detail">Dettagli</button>
+          <button class="btn btn-accent" data-action="hero-detail">${i18n.t('details')}</button>
         </div>
       </div>
     </section>`;
@@ -116,17 +117,17 @@ function welcomeSection() {
   return `
     <div class="hero-welcome">
       <div class="kino-logo"><em>Kino</em></div>
-      <p>Il tuo sistema operativo cinematografico. Inizia esplorando e aggiungendo i tuoi film.</p>
-      <button class="btn btn-accent" data-action="go-explore">Inizia a esplorare</button>
+      <p>${i18n.t('welcome_text')}</p>
+      <button class="btn btn-accent" data-action="go-explore">${i18n.t('start_explore')}</button>
     </div>`;
 }
 
 function sectionHTML(title, items, navTarget) {
-  return `
+    return `
     <div class="section-block">
       <div class="section-header">
         <h2 class="section-title">${title}</h2>
-        <span class="section-link" data-nav="${navTarget}">Vedi tutti</span>
+        <span class="section-link" data-nav="${navTarget}">${i18n.t('see_all')}</span>
       </div>
       <div class="carousel">
         ${items.map(m => `
@@ -143,8 +144,8 @@ function trendingSection(items) {
   return `
     <div class="section-block">
       <div class="section-header">
-        <h2 class="section-title">Popolari ora</h2>
-        <span class="section-link" data-nav="explore">Scopri</span>
+        <h2 class="section-title">${i18n.t('popular_now')}</h2>
+        <span class="section-link" data-nav="explore">${i18n.t('start_explore')}</span>
       </div>
       <div class="carousel">
         ${items.map(t => `

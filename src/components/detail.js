@@ -3,11 +3,12 @@ import { movieDetails, posterUrl } from '../services/tmdb.js';
 import { imdbRating } from '../services/omdb.js';
 import { addMovie, updateMovie } from '../data/repo.js';
 import { openWatchedModal } from './watched.js';
+import i18n from '../core/i18n.js';
 
 export async function openDetail(movie, options = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.innerHTML = `<div class="modal"><div class="modal-loading"><div class="sk" style="width:48px;height:48px;border-radius:50%;margin:0 auto"></div><p style="color:var(--ink-mute);margin-top:14px">Caricamento…</p></div></div>`;
+  overlay.innerHTML = `<div class="modal"><div class="modal-loading"><div class="sk" style="width:48px;height:48px;border-radius:50%;margin:0 auto"></div><p style="color:var(--ink-mute);margin-top:14px">${i18n.t('loading')}</p></div></div>`;
   document.body.appendChild(overlay);
 
   const onKey = e => { if (e.key === 'Escape') close(); };
@@ -50,11 +51,11 @@ export async function openDetail(movie, options = {}) {
   const addBtn = modal.querySelector('[data-action="add-wl"]');
   if (addBtn) {
     addBtn.addEventListener('click', async () => {
-      addBtn.disabled = true; addBtn.textContent = 'Salvato ✓';
+      addBtn.disabled = true; addBtn.textContent = i18n.t('saved');
       try {
         await addMovie(enrichedPayload(d, true));
         if (options.onAdd) options.onAdd(d);
-      } catch { addBtn.textContent = 'Errore'; addBtn.disabled = false; }
+      } catch { addBtn.textContent = i18n.t('error'); addBtn.disabled = false; }
     });
   }
 
@@ -84,7 +85,7 @@ export async function openDetail(movie, options = {}) {
   if (favBtn && d.id) {
     favBtn.addEventListener('click', async () => {
       d.isFavorite = !d.isFavorite;
-      favBtn.textContent = d.isFavorite ? '♥ Preferito' : '♡ Preferiti';
+      favBtn.textContent = d.isFavorite ? `♥ ${i18n.t('saved')}` : `♡ ${i18n.t('favorites')}`;
       favBtn.classList.toggle('btn-accent', d.isFavorite);
       try { await updateMovie(d.id, { isFavorite: d.isFavorite }); } catch {}
       if (options.onUpdate) options.onUpdate(d);
@@ -118,20 +119,20 @@ function renderModal(d, options = {}) {
   let actions = '';
   if (mode === 'explore') {
     actions = `
-      <button class="btn btn-accent" data-action="watch">Segna come visto</button>
-      <button class="btn" data-action="add-wl">+ Watchlist</button>`;
+      <button class="btn btn-accent" data-action="watch">${i18n.t('mark_watched')}</button>
+      <button class="btn" data-action="add-wl">${i18n.t('add_watchlist')}</button>`;
   } else if (mode === 'watchlist') {
     const favLabel = d.isFavorite ? '♥ Preferito' : '♡ Preferiti';
     const favClass = d.isFavorite ? 'btn btn-accent btn-sm' : 'btn btn-sm';
     actions = `
-      <button class="btn btn-accent" data-action="watch">Segna come visto</button>
-      <button class="${favClass}" data-action="fav">${favLabel}</button>`;
+      <button class="btn btn-accent" data-action="watch">${i18n.t('mark_watched')}</button>
+      <button class="${favClass}" data-action="fav">${d.isFavorite ? `♥ ${i18n.t('saved')}` : `♡ ${i18n.t('favorites')}`}</button>`;
   } else {
     const favLabel = d.isFavorite ? '♥ Preferito' : '♡ Preferiti';
     const favClass = d.isFavorite ? 'btn btn-accent btn-sm' : 'btn btn-sm';
     actions = `
-      <button class="btn" data-action="watch">Modifica voto</button>
-      <button class="${favClass}" data-action="fav">${favLabel}</button>`;
+      <button class="btn" data-action="watch">${i18n.t('edit_vote')}</button>
+      <button class="${favClass}" data-action="fav">${d.isFavorite ? `♥ ${i18n.t('saved')}` : `♡ ${i18n.t('favorites')}`}</button>`;
   }
 
   // User rating badge
@@ -147,20 +148,20 @@ function renderModal(d, options = {}) {
         <div class="modal-rating">
           ${d.imdbRating ? `<span class="imdb-badge">IMDb ${esc(d.imdbRating)}</span>` : ''}
           ${userRating}
-          ${d.imdbVotes ? `<span class="imdb-votes">${esc(String(d.imdbVotes))} voti</span>` : ''}
+          ${d.imdbVotes ? `<span class="imdb-votes">${esc(String(d.imdbVotes))} ${i18n.t('votes')}</span>` : ''}
         </div>
-        ${d.watchedDate ? `<div style="font-size:.8rem;color:var(--ink-mute);margin-bottom:8px">Visto il ${fmtDate(d.watchedDate)}</div>` : ''}
+        ${d.watchedDate ? `<div style="font-size:.8rem;color:var(--ink-mute);margin-bottom:8px">${i18n.t('seen_on')} ${fmtDate(d.watchedDate)}</div>` : ''}
         ${d.notes ? `<div style="font-size:.84rem;color:var(--ink-dim);margin-bottom:10px;font-style:italic">"${esc(d.notes)}"</div>` : ''}
         ${d.plot ? `<p class="modal-plot">${esc(d.plot)}</p>` : ''}
       </div>
     </div>
     <div class="modal-details">
-      ${row('Regista', d.director)}
-      ${row('Cast', (d.cast || []).join(', '))}
-      ${row('Lingua', langName(d.originalLanguage))}
-      ${row('Paesi', (d.countries || []).join(', '))}
-      ${row('Uscita', fmtDate(d.releaseDate))}
-      ${d.runtime ? row('Durata', `${d.runtime} min`) : ''}
+      ${row(i18n.t('director'), d.director)}
+      ${row(i18n.t('cast'), (d.cast || []).join(', '))}
+      ${row(i18n.t('languageLabel'), langName(d.originalLanguage))}
+      ${row(i18n.t('country'), (d.countries || []).join(', '))}
+      ${row(i18n.t('release'), fmtDate(d.releaseDate))}
+      ${d.runtime ? row(i18n.t('runtime'), `${d.runtime} min`) : ''}
     </div>
     <div class="modal-actions">${actions}</div>`;
 }

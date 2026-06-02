@@ -1,5 +1,6 @@
 /** VAULT — analytics, ranking Elo, charts. */
 import { getMovies, getMatches } from '../data/repo.js';
+import i18n from '../core/i18n.js';
 import { tierOf, seedElo } from '../core/elo.js';
 
 let ChartJS = null;
@@ -90,15 +91,15 @@ function renderOverview(body, rated, wl, all, matches) {
 
   body.innerHTML = `
     <div class="vault-stats">
-      ${vStat('Visti', rated.length)}
-      ${vStat('Watchlist', wl.length)}
-      ${vStat('Voto medio', avgRating)}
-      ${vStat('Tempo totale', runtimeStr)}
+      ${vStat(i18n.t('stat_seen'), rated.length)}
+      ${vStat(i18n.t('stat_watchlist'), wl.length)}
+      ${vStat(i18n.t('stat_avg'), avgRating)}
+      ${vStat(i18n.t('stat_runtime'), runtimeStr)}
     </div>
 
     ${guiltyPleasures.length ? `
     <div class="vault-section">
-      <h3 class="vault-section-title">Guilty Pleasures <span class="vault-hint">Il tuo voto &gt; IMDb</span></h3>
+      <h3 class="vault-section-title">${i18n.t('guilty_pleasures')} <span class="vault-hint">${i18n.t('guilty_hint')}</span></h3>
       <div class="vault-mini-list">
         ${guiltyPleasures.map(m => miniCard(m, `+${(Number(m.rating) - parseFloat(m.imdbRating)).toFixed(1)}`, 'up')).join('')}
       </div>
@@ -106,7 +107,7 @@ function renderOverview(body, rated, wl, all, matches) {
 
     ${hotTakes.length ? `
     <div class="vault-section">
-      <h3 class="vault-section-title">Hot Takes <span class="vault-hint">Il tuo voto &lt; IMDb</span></h3>
+      <h3 class="vault-section-title">${i18n.t('hot_takes')} <span class="vault-hint">${i18n.t('hot_takes_hint')}</span></h3>
       <div class="vault-mini-list">
         ${hotTakes.map(m => miniCard(m, `${(Number(m.rating) - parseFloat(m.imdbRating)).toFixed(1)}`, 'down')).join('')}
       </div>
@@ -114,13 +115,13 @@ function renderOverview(body, rated, wl, all, matches) {
 
     ${upsets.length ? `
     <div class="vault-section">
-      <h3 class="vault-section-title">Top Upsets <span class="vault-hint">Le più grandi sorprese in Battle</span></h3>
+      <h3 class="vault-section-title">${i18n.t('top_upsets')} <span class="vault-hint">${i18n.t('top_upsets_hint')}</span></h3>
       <div class="vault-upsets">
         ${upsets.map((m, i) => upsetCard(m, i)).join('')}
       </div>
     </div>` : ''}
 
-    ${!rated.length ? '<div class="vault-empty">Valuta qualche film per sbloccare le statistiche.</div>' : ''}
+    ${!rated.length ? `<div class="vault-empty">${i18n.t('vault_empty')}</div>` : ''}
   `;
 }
 
@@ -133,18 +134,18 @@ async function renderCharts(body, rated) {
   body.innerHTML = `
     <div class="vault-chart-grid">
       <div class="vault-chart-card">
-        <h3 class="vault-chart-title">Consensus Delta</h3>
-        <p class="vault-chart-desc">Il tuo voto vs la media IMDb</p>
+        <h3 class="vault-chart-title">${i18n.t('consensus_delta')}</h3>
+        <p class="vault-chart-desc">${i18n.t('consensus_desc')}</p>
         ${withImdb.length >= 2
           ? '<div class="vault-chart-wrap"><canvas id="chartDelta"></canvas></div>'
-          : '<div class="vault-chart-empty">Servono almeno 2 film con voto IMDb.</div>'}
+          : `<div class="vault-chart-empty">${i18n.t('vault_need_at_least_imdb')}</div>`}
       </div>
       <div class="vault-chart-card">
-        <h3 class="vault-chart-title">Runtime vs Rating</h3>
-        <p class="vault-chart-desc">Preferisci film corti o lunghi?</p>
+        <h3 class="vault-chart-title">${i18n.t('runtime_vs_rating')}</h3>
+        <p class="vault-chart-desc">${i18n.t('runtime_desc')}</p>
         ${withRuntime.length >= 2
           ? '<div class="vault-chart-wrap"><canvas id="chartRuntime"></canvas></div>'
-          : '<div class="vault-chart-empty">Servono almeno 2 film con durata nota.</div>'}
+          : `<div class="vault-chart-empty">${i18n.t('vault_need_at_least_runtime')}</div>`}
       </div>
     </div>`;
 
@@ -155,7 +156,7 @@ async function renderCharts(body, rated) {
     if (withImdb.length >= 2) buildConsensusChart(Chart, withImdb);
     if (withRuntime.length >= 2) buildRuntimeChart(Chart, withRuntime);
   } catch {
-    body.insertAdjacentHTML('beforeend', '<div class="vault-chart-error">Impossibile caricare Chart.js</div>');
+    body.insertAdjacentHTML('beforeend', `<div class="vault-chart-error">${i18n.t('chart_load_failed')}</div>`);
   }
 }
 
@@ -198,7 +199,7 @@ function buildConsensusChart(Chart, movies) {
     },
     options: chartOpts({
       x: { title: { display: true, text: 'IMDb', color: '#7e8a9a' }, min: 0, max: 10 },
-      y: { title: { display: true, text: 'Il tuo voto', color: '#7e8a9a' }, min: 0, max: 10 },
+      y: { title: { display: true, text: i18n.t('your_rating'), color: '#7e8a9a' }, min: 0, max: 10 },
     }, (ctx) => {
       const d = data[ctx.dataIndex];
       return d ? `${d.title}: IMDb ${d.x} → Tu ${d.y}` : '';
@@ -247,7 +248,7 @@ function buildRuntimeChart(Chart, movies) {
     },
     options: chartOpts({
       x: { title: { display: true, text: 'Durata (min)', color: '#7e8a9a' } },
-      y: { title: { display: true, text: 'Il tuo voto', color: '#7e8a9a' }, min: 0, max: 10 },
+      y: { title: { display: true, text: i18n.t('your_rating'), color: '#7e8a9a' }, min: 0, max: 10 },
     }, (ctx) => {
       const d = data[ctx.dataIndex];
       return d ? `${d.title}: ${d.x} min → ${d.y}/10` : '';

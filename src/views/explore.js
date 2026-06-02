@@ -3,6 +3,7 @@ import { searchMovies, discoverMovies, posterUrl } from '../services/tmdb.js';
 import { imdbRating } from '../services/omdb.js';
 import { createFilterBar, toDiscoverParams } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
+import i18n from '../core/i18n.js';
 
 export const explore = {
   id: 'explore', label: 'Explore', icon: '🔍',
@@ -55,7 +56,7 @@ export const explore = {
         if (isFirst) grid.innerHTML = '';
         sentinel.innerHTML = '';
         if (!results.length && isFirst) {
-          grid.innerHTML = '<div class="empty"><div class="big">Nessun risultato</div></div>';
+          grid.innerHTML = `<div class="empty"><div class="big">${i18n.t('no_results')}</div></div>`;
         } else {
           appendCards(grid, results);
         }
@@ -124,5 +125,5 @@ function appendCards(grid, results) {
 }
 
 function skeleton(g, n) { g.innerHTML = ''; for (let i = 0; i < n; i++) { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = '<div class="poster sk"></div>'; g.appendChild(d); } }
-function err(msg) { return `<div class="empty"><div class="big">Errore TMDB</div>${esc(msg)}</div>`; }
+function err(msg) { return `<div class="empty"><div class="big">${i18n.t('tmdb_error')}</div>${esc(msg)}</div>`; }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
