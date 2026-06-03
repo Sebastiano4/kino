@@ -11,8 +11,8 @@
  *   - Kino Wrapped launcher (Part 10)
  */
 
-import { getUser } from '../core/auth.js';
-import { getState } from '../core/store.js';
+import { getUser, logout } from '../core/auth.js';
+import { getState, destroy as storeDestroy } from '../core/store.js';
 import { exportMoviesJSON, exportMoviesCSV, importMoviesJSON, getProfile, saveProfile } from '../data/repo.js';
 import { ThemeManager } from '../core/theme.js';
 import { openWrapped } from '../components/wrapped.js';
@@ -161,6 +161,14 @@ async function _openSheet(user) {
               <button class="btn btn-accent btn-sm" id="wrappedBtn">Open Wrapped</button>
             </div>
 
+            <!-- Logout -->
+            <div class="settings-section">
+              <h3>${i18n.t('account_label') || 'Account'}</h3>
+              <button class="btn btn-sm" id="setLogoutBtn" style="border-color:var(--red);color:var(--red)">
+                ⏻ ${i18n.t('logout') || 'Logout'}
+              </button>
+            </div>
+
             <!-- Info -->
             <div class="settings-section">
               <h3>${i18n.t('info_label')}</h3>
@@ -215,6 +223,12 @@ async function _openSheet(user) {
             msg.style.display = 'block'; msg.style.color = 'var(--red)';
             msg.textContent = `${i18n.t('avatarError')}: ${e.message}`;
         }
+    });
+
+    // Logout
+    sheet.querySelector('#setLogoutBtn').addEventListener('click', () => {
+        storeDestroy();
+        logout();
     });
 
     // Theme toggle

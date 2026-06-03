@@ -671,3 +671,419 @@ textarea.filter-input {
   .vault-chart-wrap { height: 220px; }
   .vault-upset-card { flex-wrap: wrap; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   KINO V2 — Component styles (ported from Kino V2.html design file)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Grain overlay ─────────────────────────────────────────────────── */
+.grain-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9000;
+  opacity: .032;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+}
+
+/* ── Nav — V2 wordmark style ───────────────────────────────────────── */
+.kino-logo {
+  font-style: italic;
+  color: var(--gold);
+  letter-spacing: .03em;
+}
+.kino-logo em { color: var(--gold); }
+.kino-tab.active {
+  color: var(--gold);
+  background: none;
+  box-shadow: none;
+}
+.kino-tab.active::after {
+  content: ''; position: absolute; bottom: 0; left: 10px; right: 10px;
+  height: 1px; background: var(--gold); opacity: .65;
+}
+.kino-tab { position: relative; }
+
+/* ── Glass-warm utility ────────────────────────────────────────────── */
+.glass-warm {
+  background: rgba(10,9,8,.82);
+  border: 1px solid rgba(200,169,126,.28);
+}
+
+/* ── Poster Art (gradient, director-keyed) ─────────────────────────── */
+.poster-art {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  padding: 16px 10px;
+}
+.poster-art-title {
+  font-family: var(--font-disp); font-style: italic;
+  font-size: .9rem; color: var(--ink); text-align: center;
+  line-height: 1.2; word-break: break-word; z-index: 1;
+}
+.poster-art-dir {
+  font-family: var(--font-ui); font-size: .58rem;
+  text-align: center; margin-top: 6px;
+  opacity: .75; letter-spacing: .04em; z-index: 1;
+}
+.poster-art-year {
+  position: absolute; bottom: 8px; left: 0; right: 0;
+  text-align: center; font-family: var(--font-mono);
+  font-size: .6rem; letter-spacing: .18em; opacity: .6;
+}
+.poster-art-vignette {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.poster-art-corner {
+  position: absolute; width: 8px; height: 8px; opacity: .4;
+}
+.poster-art-corner.tl { top: 10px; left: 10px; border-top: 1px solid; border-left: 1px solid; }
+.poster-art-corner.tr { top: 10px; right: 10px; border-top: 1px solid; border-right: 1px solid; }
+.poster-art-corner.bl { bottom: 22px; left: 10px; border-bottom: 1px solid; border-left: 1px solid; }
+.poster-art-corner.br { bottom: 22px; right: 10px; border-bottom: 1px solid; border-right: 1px solid; }
+
+/* ── Card score badge (V2 glass-warm style) ────────────────────────── */
+.card .rate {
+  position: absolute; bottom: 7px; right: 7px;
+  font: 700 .66rem/1 var(--font-mono); color: var(--gold-h);
+  padding: 3px 7px; border-radius: var(--r-sm);
+  background: rgba(10,9,8,.82);
+  border: 1px solid rgba(200,169,126,.28);
+}
+.card .dir { color: var(--gold-d); }
+
+/* ── POSTER WALL VIEW ──────────────────────────────────────────────── */
+.wall-page { padding: 0 0 60px; }
+
+.wall-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 28px var(--gutter) 16px; flex-wrap: wrap; gap: 12px;
+}
+.wall-title {
+  font-family: var(--font-disp); font-style: italic;
+  font-size: calc(1.8rem * var(--text-scale, 1)); color: var(--ink);
+}
+.wall-sub { font-size: .78rem; color: var(--ink-mute); margin-top: 4px; }
+
+.wall-sort { display: flex; gap: 4px; }
+.wall-sort-btn {
+  appearance: none; border: 1px solid var(--line); background: var(--bg-1);
+  color: var(--ink-mute); font: 500 .76rem/1 var(--font-ui);
+  padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer;
+  transition: all var(--t-fast);
+}
+.wall-sort-btn:hover { border-color: var(--gold-d); color: var(--ink-dim); }
+.wall-sort-btn.active { border-color: var(--gold); color: var(--gold); background: var(--gold-glow); }
+
+.wall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(110px, 11vw, 160px), 1fr));
+  gap: 3px;
+  padding: 0 var(--gutter);
+}
+
+.wall-cell {
+  aspect-ratio: 2/3; position: relative; overflow: hidden;
+  border-radius: 4px; cursor: pointer;
+  transition: transform var(--t-med) var(--ease), z-index 0s;
+}
+.wall-cell:hover { transform: scale(1.04); z-index: 2; }
+
+.wall-cell-poster { width: 100%; height: 100%; }
+
+.wall-cell-rank {
+  position: absolute; top: 6px; left: 6px;
+  font: 600 .55rem/1 var(--font-mono);
+  background: rgba(10,9,8,.82); border: 1px solid rgba(200,169,126,.22);
+  padding: 2px 6px; border-radius: 3px;
+  opacity: .9;
+}
+
+.wall-cell-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  justify-content: flex-end; padding: 10px 8px;
+  opacity: 0; transition: opacity var(--t-fast); pointer-events: none;
+}
+.wall-cell:hover .wall-cell-overlay { opacity: 1; }
+.wall-cell-info {}
+.wall-cell-title {
+  font-family: var(--font-disp); font-style: italic;
+  font-size: .78rem; color: var(--ink); line-height: 1.2; margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.9);
+}
+.wall-cell-year {
+  font-size: .6rem; color: var(--ink-dim); font-family: var(--font-mono);
+}
+.wall-cell-rating {
+  font: 700 .68rem/1 var(--font-mono);
+  margin-top: 3px; text-shadow: 0 1px 4px rgba(0,0,0,.9);
+}
+
+/* ── Tier badge (V2) ───────────────────────────────────────────────── */
+.tier-badge {
+  display: inline-block; font: 500 .65rem/1 var(--font-mono);
+  padding: 2px 7px; border-radius: var(--r-pill); letter-spacing: .04em;
+  background: rgba(200,169,126,.12); border: 1px solid rgba(200,169,126,.2);
+}
+
+/* ── View enter animation ──────────────────────────────────────────── */
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.view-enter { animation: viewIn var(--t-slow) var(--ease) both; }
+
+/* ── Responsive overrides (Wall) ───────────────────────────────────── */
+@media (max-width: 540px) {
+  .wall-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px; padding: 0 var(--gutter);
+  }
+}
+@media (min-width: 1200px) {
+  .wall-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+
+/* ── Review file preview (inline, replaces textarea) ─────────────── */
+.impressions-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.impressions-header .filter-section-label { margin-bottom: 0; }
+
+/* Drag-over highlight on the textarea itself */
+.review-textarea.drag-over {
+  border-color: var(--gold); background: color-mix(in srgb, var(--gold-glow) 60%, var(--bg-1));
+  outline: 2px dashed var(--gold); outline-offset: 2px;
+}
+
+/* Drop hint bar below the textarea */
+.review-drop-hint {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 6px; padding: 8px 12px;
+  border: 1px dashed var(--line-h); border-radius: var(--r-md);
+  font-size: .78rem; color: var(--ink-mute);
+  user-select: none;
+}
+.review-upload-hint { font-size: .68rem; color: var(--ink-mute); margin-left: auto; }
+.review-upload-browse {
+  appearance: none; border: 0; background: none; padding: 0;
+  color: var(--gold); font: inherit; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.review-upload-browse:hover { opacity: .75; }
+
+/* Remove file button */
+.review-remove-file {
+  appearance: none; border: 0; background: none; padding: 0;
+  font: 500 .72rem var(--font-ui); color: var(--ink-mute); cursor: pointer;
+  transition: color var(--t-fast);
+}
+.review-remove-file:hover { color: var(--red); }
+
+/* Preview container */
+.review-preview {
+  border: 1px solid var(--line-h); border-radius: var(--r-md);
+  overflow: hidden; background: var(--bg-1);
+  display: flex; flex-direction: column;
+}
+.review-preview-bar {
+  display: flex; align-items: center; padding: 8px 12px;
+  background: var(--bg-2); border-bottom: 1px solid var(--line);
+  font-size: .76rem; color: var(--ink-dim);
+}
+.review-preview-filename { font-family: var(--font-mono); font-size: .72rem; }
+
+/* PDF embed */
+.review-preview-embed {
+  width: 100%; height: 340px; border: 0; display: block;
+}
+/* HTML iframe */
+.review-preview-frame {
+  width: 100%; height: 340px; border: 0; display: block;
+  background: #fff;
+}
+/* TXT pre */
+.review-preview-txt {
+  margin: 0; padding: 14px 16px;
+  font: .82rem/1.65 var(--font-mono); color: var(--ink-dim);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 340px; overflow-y: auto;
+}
+.review-preview-loading {
+  padding: 24px; text-align: center;
+  font-size: .82rem; color: var(--ink-mute);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DETAIL MODAL V2 — matches Kino V2 design screenshots
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Override modal width for detail */
+.modal { max-width: 760px; padding: 0; overflow: hidden; }
+
+/* ── Hero ──────────────────────────────────────────────────────────── */
+.dm-hero {
+  display: flex; gap: 28px; padding: 32px 32px 24px;
+  align-items: flex-start;
+}
+.dm-poster {
+  flex-shrink: 0;
+  width: clamp(120px, 20%, 170px);
+  aspect-ratio: 2/3;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg-3);
+}
+.dm-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.dm-info { flex: 1; min-width: 0; padding-top: 4px; }
+
+.dm-eyebrow {
+  font-family: var(--font-mono); font-size: .62rem;
+  color: var(--gold); text-transform: uppercase;
+  letter-spacing: .14em; margin-bottom: 10px; opacity: .8;
+}
+.dm-title {
+  font-family: var(--font-disp); font-style: italic;
+  font-size: clamp(1.5rem, 3.5vw, 2.1rem);
+  line-height: 1.1; margin-bottom: 10px; color: var(--ink);
+}
+.dm-meta {
+  font-size: .84rem; color: var(--ink-dim); margin-bottom: 6px;
+}
+.dm-sep { opacity: .4; }
+.dm-director {
+  font-size: .88rem; color: var(--gold-d);
+  letter-spacing: .02em; margin-bottom: 12px;
+}
+.dm-genres { display: flex; flex-wrap: wrap; gap: 6px; }
+.dm-genre-pill {
+  font: 500 .68rem/1 var(--font-ui);
+  padding: 4px 10px; border-radius: var(--r-pill);
+  border: 1px solid var(--line-h); color: var(--ink-mute);
+  background: var(--bg-3);
+}
+
+/* ── Ratings bar ───────────────────────────────────────────────────── */
+.dm-ratings {
+  display: flex; border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-1);
+}
+.dm-rating-col {
+  flex: 1; padding: 16px 14px; text-align: center;
+  border-right: 1px solid var(--line);
+  transition: background var(--t-fast);
+}
+.dm-rating-col:last-child { border-right: 0; }
+.dm-rating-col:hover { background: var(--bg-2); }
+.dm-rating-label {
+  font-family: var(--font-mono); font-size: .58rem;
+  color: var(--ink-mute); text-transform: uppercase;
+  letter-spacing: .08em; margin-bottom: 6px;
+}
+.dm-rating-val {
+  font-family: var(--font-mono); font-size: 1.1rem;
+  font-weight: 500; color: var(--ink);
+}
+.dm-rating-sub { font-size: .7rem; color: var(--ink-mute); }
+.dm-imdb-badge {
+  display: inline-block; background: #f5c518; color: #000;
+  font: 700 .6rem/1 var(--font-mono); padding: 2px 5px;
+  border-radius: 3px; letter-spacing: .02em;
+}
+/* RT colors set inline via JS based on score value */
+
+/* ── Action buttons ────────────────────────────────────────────────── */
+.dm-actions {
+  display: flex; gap: 10px; padding: 20px 32px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.dm-action-btn {
+  appearance: none; cursor: pointer;
+  border: 1px solid var(--line-h); background: var(--bg-2);
+  color: var(--ink-dim); font: 500 .84rem/1 var(--font-ui);
+  padding: 10px 20px; border-radius: var(--r-pill);
+  transition: all var(--t-fast); white-space: nowrap;
+}
+.dm-action-btn:hover { border-color: var(--gold-d); color: var(--ink); }
+.dm-action-btn:disabled { opacity: .35; cursor: default; }
+.dm-action-btn.active { border-color: var(--gold); color: var(--gold); background: var(--gold-glow); }
+.dm-action-primary {
+  background: var(--gold-grad); color: var(--gold-ink);
+  border-color: transparent;
+  box-shadow: 0 4px 16px var(--gold-glow);
+}
+.dm-action-primary:hover { filter: brightness(1.08); color: var(--gold-ink); border-color: transparent; }
+.dm-action-primary:disabled { filter: none; opacity: .35; }
+
+/* ── Synopsis / Notes sections ─────────────────────────────────────── */
+.dm-section { padding: 22px 32px 0; }
+.dm-section-label {
+  font-family: var(--font-mono); font-size: .6rem;
+  color: var(--ink-mute); text-transform: uppercase;
+  letter-spacing: .1em; margin-bottom: 10px;
+}
+.dm-synopsis {
+  font-size: .92rem; color: var(--ink-dim);
+  line-height: 1.65; margin: 0;
+}
+
+/* ── Details table ─────────────────────────────────────────────────── */
+.dm-details {
+  padding: 16px 0; margin: 20px 32px 0;
+  border-top: 1px solid var(--line);
+}
+.dm-detail-row {
+  display: flex; align-items: baseline; gap: 16px;
+  padding: 11px 0; border-bottom: 1px solid var(--line);
+}
+.dm-detail-row:last-child { border-bottom: 0; }
+.dm-detail-label {
+  font-family: var(--font-mono); font-size: .62rem;
+  color: var(--ink-mute); text-transform: uppercase;
+  letter-spacing: .1em; flex-shrink: 0; width: 90px;
+}
+.dm-detail-value { font-size: .9rem; color: var(--ink); }
+
+/* ── ELO stats bar ─────────────────────────────────────────────────── */
+.dm-stats-bar {
+  display: flex; margin-top: 24px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-1);
+}
+.dm-stat {
+  flex: 1; padding: 18px 12px; text-align: center;
+  border-right: 1px solid var(--line);
+}
+.dm-stat:last-child { border-right: 0; }
+.dm-stat-val {
+  font-family: var(--font-mono); font-size: 1.15rem;
+  color: var(--ink); margin-bottom: 4px; letter-spacing: -.01em;
+}
+.dm-stat-label {
+  font-family: var(--font-mono); font-size: .56rem;
+  color: var(--ink-mute); text-transform: uppercase; letter-spacing: .08em;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .dm-hero { flex-direction: column; align-items: center; padding: 24px 20px 16px; gap: 16px; }
+  .dm-poster { width: clamp(100px, 38vw, 150px); }
+  .dm-info { text-align: center; }
+  .dm-genres { justify-content: center; }
+  .dm-ratings { flex-wrap: wrap; }
+  .dm-rating-col { min-width: 50%; border-bottom: 1px solid var(--line); }
+  .dm-rating-col:nth-last-child(-n+2) { border-bottom: 0; }
+  .dm-actions, .dm-section, .dm-details { padding-left: 20px; padding-right: 20px; }
+  .dm-details { margin-left: 20px; margin-right: 20px; }
+}
+
+/* ── Modal backdrop glow (director-keyed accent) ──────────────────── */
+.modal-bg-glow {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+}
+/* modal-overlay is already position:fixed — that IS a positioned ancestor for
+   the absolute .modal-bg-glow child. Do NOT set position:relative here. */

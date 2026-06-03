@@ -10,7 +10,7 @@
  */
 
 import { movieDetails, posterUrl, posterImg, watchProviders } from '../services/tmdb.js';
-import { imdbRating } from '../services/omdb.js';
+import { imdbRating, imdbFull } from '../services/omdb.js';
 import { addMovie, updateMovie } from '../data/repo.js';
 import { openWatchedModal } from './watched.js';
 import i18n from '../core/i18n.js';
@@ -33,6 +33,7 @@ export async function openDetail(movie, options = {}) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
+      <div class="modal-bg-glow"></div>
       <div class="modal">
         <div class="modal-loading">
           <div class="sk" style="width:48px;height:48px;border-radius:50%;margin:0 auto"></div>
@@ -56,12 +57,37 @@ export async function openDetail(movie, options = {}) {
     try {
         const tmdbId = d.tmdbId || d.id;
         if (tmdbId) {
-            const [tmdb, imdb] = await Promise.all([
-                movieDetails(tmdbId, 'credits'),
-                imdbRating({ title: d.title, year: d.year }),
+            const [tmdb, omdb] = await Promise.all([
+                movieDetails(tmdbId, 'credits,videos,external_ids'),
+                imdbFull({ title: d.title, year: d.year }),
             ]);
             const director = tmdb.credits?.crew?.find(c => c.job === 'Director');
             const cast     = (tmdb.credits?.cast || []).slice(0, 6).map(c => c.name);
+
+            // Trailer: prefer official YouTube trailer
+            const trailer = (tmdb.videos?.results || []).find(
+                v => v.site === 'YouTube' && v.type === 'Trailer' && v.official
+            ) || (tmdb.videos?.results || []).find(
+                v => v.site === 'YouTube' && v.type === 'Trailer'
+            );
+
+            // Rotten Tomatoes score from OMDb Ratings array
+            const rtEntry = (omdb?.Ratings || []).find(r => r.Source === 'Rotten Tomatoes');
+            const rtScore = rtEntry ? rtEntry.Value : null; // e.g. "88%"
+
+            // Use imdb_id from TMDB external_ids for more reliable OMDb match
+            const imdbId = tmdb.external_ids?.imdb_id || omdb?.imdbID || null;
+            let imdbRatingVal = omdb?.imdbRating || d.imdbRating || null;
+            // If OMDb lookup by title/year failed, retry with imdbId
+            if (!imdbRatingVal && imdbId) {
+                const retry = await imdbFull({ imdbId }).catch(() => null);
+                if (retry?.imdbRating) {
+                    imdbRatingVal = retry.imdbRating;
+                    const rtE2 = (retry?.Ratings || []).find(r => r.Source === 'Rotten Tomatoes');
+                    if (rtE2) Object.assign(omdb || {}, { _rt: rtE2.Value });
+                }
+            }
+
             Object.assign(d, {
                 director:         director?.name || d.director || '',
                 cast,
@@ -75,8 +101,10 @@ export async function openDetail(movie, options = {}) {
                 poster:           posterUrl(tmdb.poster_path) || d.poster,
                 backdropPath:     tmdb.backdrop_path || d.backdropPath || null,
                 popularity:       tmdb.popularity,
-                imdbRating:       imdb.rating || d.imdbRating,
-                imdbVotes:        imdb.votes  || d.imdbVotes,
+                imdbRating:       imdbRatingVal,
+                imdbVotes:        omdb?.imdbVotes || d.imdbVotes,
+                rtScore:          rtScore || omdb?._rt || null,
+                trailerKey:       trailer?.key || null,
                 _posterPath:      tmdb.poster_path || null,
             });
         }
@@ -85,15 +113,31 @@ export async function openDetail(movie, options = {}) {
     // ── Render modal shell ────────────────────────────────────────────────────
     const modal = overlay.querySelector('.modal');
     modal.innerHTML = _renderModal(d, options);
+    // Backdrop glow keyed to director accent
+    const acc = _directorAccent(d.director);
+    overlay.style.setProperty('--modal-acc', acc);
+    const bgGlow = overlay.querySelector('.modal-bg-glow');
+    if (bgGlow) bgGlow.style.background =
+        `radial-gradient(ellipse at 40% 50%, ${acc}1e 0%, transparent 62%)`;
 
     // Replace static poster with optimized img element
-    const posterWrap = modal.querySelector('.modal-poster');
+    const posterWrap = modal.querySelector('.dm-poster');
     if (posterWrap && d._posterPath) {
         posterWrap.innerHTML = '';
         posterWrap.appendChild(posterImg(d._posterPath, { context: 'modal', alt: d.title || '' }));
+    } else if (posterWrap && d.poster) {
+        posterWrap.innerHTML = `<img src="${esc(d.poster)}" alt="${esc(d.title || '')}" style="width:100%;height:100%;object-fit:cover;">`;
     }
 
     modal.querySelector('.modal-close')?.addEventListener('click', close);
+
+    // ── Trailer button ────────────────────────────────────────────────────────
+    modal.querySelector('[data-action="trailer"]')?.addEventListener('click', () => {
+        const url = d.trailerKey
+            ? `https://www.youtube.com/watch?v=${d.trailerKey}`
+            : `https://www.youtube.com/results?search_query=${encodeURIComponent((d.title || '') + ' ' + (d.year || '') + ' official trailer')}`;
+        window.open(url, '_blank', 'noopener');
+    });
 
     // ── Streaming providers (async, appended after modal renders) ─────────────
     const tmdbId = d.tmdbId || d.id;
@@ -223,71 +267,164 @@ function _enrichedPayload(d, isWatchlist) {
 }
 
 function _renderModal(d, options = {}) {
-    const year    = d.year || (d.releaseDate || '').slice(0, 4);
-    const runtime = d.runtime ? `${d.runtime} min` : '';
-    const genres  = (d.genres || []).join(', ');
-    const meta    = [year, runtime, genres].filter(Boolean).join('<span class="sep"> · </span>');
-    const mode    = options.mode || 'explore';
+    const year     = d.year || (d.releaseDate || '').slice(0, 4);
+    const lang     = _langName(d.originalLanguage);
+    const country  = (d.countries || [])[0] || '';
+    const runtime  = d.runtime ? _fmtRuntime(d.runtime) : '';
+    const mode     = options.mode || 'explore';
 
-    let actions = '';
+    // ── Eyebrow ───────────────────────────────────────────────────────────────
+    const eyebrow = d.watchedDate
+        ? `WATCHED ${_fmtDateLong(d.watchedDate)}`
+        : mode === 'explore' ? 'DISCOVER' : '';
+
+    // ── Meta line ─────────────────────────────────────────────────────────────
+    const metaParts = [year, runtime, lang, country].filter(Boolean);
+    const metaLine  = metaParts.join('<span class="dm-sep"> · </span>');
+
+    // ── Genre pills ───────────────────────────────────────────────────────────
+    // ── Genre pills ───────────────────────────────────────────────────────────
+    const genrePills = (d.genres || []).slice(0, 4)
+        .map(g => `<span class="dm-genre-pill">${esc(g)}</span>`).join('');
+
+    // ── Ratings bar ───────────────────────────────────────────────────────────
+    const userRating = d.rating != null ? Number(d.rating).toFixed(1) : null;
+    const imdbVal    = d.imdbRating ? parseFloat(d.imdbRating) : null;
+    const vsWorld    = (userRating && imdbVal)
+        ? (parseFloat(userRating) - imdbVal).toFixed(1) : null;
+    const vsSign  = vsWorld && parseFloat(vsWorld) > 0 ? '+' : '';
+    const vsColor = vsWorld
+        ? (parseFloat(vsWorld) > 0 ? 'var(--green)' : parseFloat(vsWorld) < 0 ? 'var(--red)' : 'var(--ink-dim)')
+        : 'var(--ink-dim)';
+    const rtVal   = d.rtScore || null;
+    const rtNum   = rtVal ? parseInt(rtVal) : null;
+    const rtColor = !rtNum      ? 'var(--ink-mute)'
+                  : rtNum >= 75 ? '#E05050'
+                  : rtNum >= 60 ? '#D4924A'
+                  :               '#7A7A7A';
+
+    // ── Action buttons ────────────────────────────────────────────────────────
+    const trailerBtn = `<button class="dm-action-btn dm-action-primary" data-action="trailer">&#9654; Trailer</button>`;
+    let editBtn = '', favBtn = '';
     if (mode === 'explore') {
-        actions = `
-          <button class="btn btn-accent" data-action="watch">${i18n.t('mark_watched')}</button>
-          <button class="btn"            data-action="add-wl">${i18n.t('add_watchlist')}</button>`;
+        editBtn = `<button class="dm-action-btn" data-action="watch">${i18n.t('mark_watched')}</button>`;
+        favBtn  = `<button class="dm-action-btn" data-action="add-wl">${i18n.t('add_watchlist')}</button>`;
     } else if (mode === 'watchlist') {
-        const fCls = d.isFavorite ? 'btn btn-accent btn-sm' : 'btn btn-sm';
-        actions = `
-          <button class="btn btn-accent" data-action="watch">${i18n.t('mark_watched')}</button>
-          <button class="${fCls}"        data-action="fav">${d.isFavorite ? `♥ ${i18n.t('saved')}` : `♡ ${i18n.t('favorites')}`}</button>`;
+        editBtn = `<button class="dm-action-btn" data-action="watch">${i18n.t('mark_watched')}</button>`;
+        favBtn  = `<button class="dm-action-btn${d.isFavorite ? ' active' : ''}" data-action="fav">&#9825; ${i18n.t('favorites')}</button>`;
     } else {
-        const fCls = d.isFavorite ? 'btn btn-accent btn-sm' : 'btn btn-sm';
-        actions = `
-          <button class="btn"     data-action="watch">${i18n.t('edit_vote')}</button>
-          <button class="${fCls}" data-action="fav">${d.isFavorite ? `♥ ${i18n.t('saved')}` : `♡ ${i18n.t('favorites')}`}</button>`;
+        editBtn = `<button class="dm-action-btn" data-action="watch">${i18n.t('edit_vote')}</button>`;
+        favBtn  = `<button class="dm-action-btn" data-action="fav">&#9825; ${i18n.t('favorites')}</button>`;
     }
 
-    const userRating = d.rating != null
-        ? `<span class="user-badge">★ ${Number(d.rating).toFixed(1)}</span>` : '';
+    // ── ELO stats ─────────────────────────────────────────────────────────────
+    const eloScore  = d.elo     || null;
+    const battles   = d.matches || null;
+    const tier      = eloScore ? _eloTier(eloScore) : null;
+    const canonRank = d.canonRank || null;
+
+    const statsBar = (eloScore || battles || tier) ? `
+      <div class="dm-stats-bar">
+        ${eloScore  ? `<div class="dm-stat"><div class="dm-stat-val" style="color:var(--gold)">${eloScore}</div><div class="dm-stat-label">ELO SCORE</div></div>` : ''}
+        ${canonRank ? `<div class="dm-stat"><div class="dm-stat-val" style="color:var(--gold)">#${canonRank}</div><div class="dm-stat-label">IN YOUR CANON</div></div>` : ''}
+        ${battles   ? `<div class="dm-stat"><div class="dm-stat-val">${battles}</div><div class="dm-stat-label">BATTLES</div></div>` : ''}
+        ${tier      ? `<div class="dm-stat"><div class="dm-stat-val" style="font-size:.82rem;letter-spacing:.06em">${tier.toUpperCase()}</div><div class="dm-stat-label">TIER</div></div>` : ''}
+      </div>` : '';
 
     return `
       <button class="modal-close">&times;</button>
-      <div class="modal-hero">
-        <div class="modal-poster">
-          <img alt="" src="${esc(d.poster || '')}">
-        </div>
-        <div class="modal-info">
-          <h2 class="modal-title">${esc(d.title || '')}</h2>
-          <div class="modal-meta">${meta}</div>
-          <div class="modal-rating">
-            ${d.imdbRating ? `<span class="imdb-badge">IMDb ${esc(String(d.imdbRating))}</span>` : ''}
-            ${userRating}
-            ${d.imdbVotes ? `<span class="imdb-votes">${esc(String(d.imdbVotes))} ${i18n.t('votes')}</span>` : ''}
-          </div>
-          ${d.watchedDate ? `<div style="font-size:.8rem;color:var(--ink-mute);margin-bottom:8px">${i18n.t('seen_on')} ${_fmtDate(d.watchedDate)}</div>` : ''}
-          ${d.notes ? `<div style="font-size:.84rem;color:var(--ink-dim);margin-bottom:10px;font-style:italic">"${esc(d.notes)}"</div>` : ''}
-          ${d.plot ? `<p class="modal-plot">${esc(d.plot)}</p>` : ''}
+
+      <div class="dm-hero">
+        <div class="dm-poster"></div>
+        <div class="dm-info">
+          ${eyebrow ? `<div class="dm-eyebrow">${eyebrow}</div>` : ''}
+          <h2 class="dm-title">${esc(d.title || '')}</h2>
+          <div class="dm-meta">${metaLine}</div>
+          ${d.director ? `<div class="dm-director">${esc(d.director)}</div>` : ''}
+          ${genrePills ? `<div class="dm-genres">${genrePills}</div>` : ''}
         </div>
       </div>
-      <div class="modal-details">
-        ${_row(i18n.t('director'),      d.director)}
-        ${_row(i18n.t('cast'),          (d.cast || []).join(', '))}
-        ${_row(i18n.t('languageLabel'), _langName(d.originalLanguage))}
-        ${_row(i18n.t('country'),       (d.countries || []).join(', '))}
-        ${_row(i18n.t('release'),       _fmtDate(d.releaseDate))}
-        ${d.runtime ? _row(i18n.t('runtime'), `${d.runtime} min`) : ''}
+
+      <div class="dm-ratings">
+        <div class="dm-rating-col">
+          <div class="dm-rating-label">YOUR RATING</div>
+          <div class="dm-rating-val">${userRating ? `&#9733; ${userRating}` : '&mdash;'}</div>
+        </div>
+        <div class="dm-rating-col">
+          <div class="dm-rating-label"><span class="dm-imdb-badge">IMDb</span></div>
+          <div class="dm-rating-val">${imdbVal ? `${imdbVal.toFixed(1)} <span class="dm-rating-sub">/10</span>` : '&mdash;'}</div>
+        </div>
+        <div class="dm-rating-col">
+          <div class="dm-rating-label" style="color:${rtColor}">TOMATOMETER</div>
+          <div class="dm-rating-val"  style="color:${rtColor}">${rtVal || '&mdash;'}</div>
+        </div>
+        <div class="dm-rating-col">
+          <div class="dm-rating-label">VS WORLD</div>
+          <div class="dm-rating-val"  style="color:${vsColor}">${vsWorld ? `${vsSign}${vsWorld}` : '&mdash;'}</div>
+        </div>
       </div>
-      <div class="modal-actions">${actions}</div>`;
+
+      <div class="dm-actions modal-actions">
+        ${trailerBtn}${editBtn}${favBtn}
+      </div>
+
+      ${d.plot ? `
+      <div class="dm-section">
+        <div class="dm-section-label">SYNOPSIS</div>
+        <p class="dm-synopsis">${esc(d.plot)}</p>
+      </div>` : ''}
+
+      ${d.notes ? `
+      <div class="dm-section">
+        <div class="dm-section-label">YOUR NOTES</div>
+        <p class="dm-synopsis" style="font-style:italic">&ldquo;${esc(d.notes)}&rdquo;</p>
+      </div>` : ''}
+
+      <div class="dm-details">
+        ${_dmRow('DIRECTOR', d.director)}
+        ${_dmRow('CAST',     (d.cast || []).join(', '))}
+        ${d.awards ? `<div class="dm-detail-row"><span class="dm-detail-label">AWARDS</span><span class="dm-detail-value" style="color:var(--gold-h)">${esc(d.awards)}</span></div>` : ''}
+        ${_dmRow('COUNTRY',  (d.countries || []).join(', '))}
+        ${_dmRow('LANGUAGE', lang)}
+        ${d.watchedDate ? _dmRow('WATCHED', _fmtDate(d.watchedDate)) : ''}
+        ${runtime ? _dmRow('RUNTIME', runtime) : ''}
+      </div>
+
+      ${statsBar}`;
 }
 
-function _row(label, value) {
+function _dmRow(label, value) {
     if (!value) return '';
-    return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${esc(value)}</span></div>`;
+    return `<div class="dm-detail-row"><span class="dm-detail-label">${label}</span><span class="dm-detail-value">${esc(value)}</span></div>`;
 }
+
+function _row(label, value) { return _dmRow(label, value); }
 
 function _fmtDate(d) {
     if (!d) return '';
     const [y, m, day] = d.split('-');
     return [day, m, y].filter(Boolean).join('/');
+}
+
+function _fmtDateLong(d) {
+    if (!d) return '';
+    try {
+        return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+    } catch { return _fmtDate(d); }
+}
+
+function _fmtRuntime(min) {
+    if (!min) return '';
+    const h = Math.floor(min / 60), m = min % 60;
+    return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+function _eloTier(elo) {
+    if (elo >= 1400) return 'Masterwork';
+    if (elo >= 1350) return 'Prestige';
+    if (elo >= 1300) return 'Notable';
+    if (elo >= 1250) return 'Solid';
+    return 'Emerging';
 }
 
 function _langName(code) {
@@ -299,4 +436,22 @@ function _langName(code) {
 
 function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+const _ACCENTS = {
+    'Akira Kurosawa':'#C0A060','Wong Kar-wai':'#D86878','Stanley Kubrick':'#80B4D8',
+    'David Lynch':'#A878E0','Sergio Leone':'#D8985A','Andrei Tarkovsky':'#80A878',
+    'Martin Scorsese':'#C06868','Ingmar Bergman':'#B0A8A8','Bong Joon-ho':'#64C888',
+    'Alfonso Cuarón':'#A0B8C8','Céline Sciamma':'#D08898','Barry Jenkins':'#6898D8',
+    'Robert Eggers':'#B8B0A0','Ari Aster':'#C89A58','Damien Chazelle':'#D8B84A',
+    'Asghar Farhadi':'#C8B080','Quentin Tarantino':'#D08840','Nicolas Winding Refn':'#6898E8',
+    'Paul Thomas Anderson':'#B89870','Alex Garland':'#78A8A8','Todd Phillips':'#C07858',
+    'Yorgos Lanthimos':'#9090C8','Joel Coen':'#A8A088','Spike Jonze':'#88A8C8',
+    'Noah Baumbach':'#98A890','Thomas Vinterberg':'#98A8B8','Fernando Meirelles':'#D88050',
+    'Vittorio De Sica':'#D09868',
+};
+
+function _directorAccent(director) {
+    if (!director) return '#C8A97E';
+    return _ACCENTS[director] || '#C8A97E';
 }

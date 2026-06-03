@@ -6,7 +6,7 @@
   <title>Kino</title>
   <link rel="icon" href="data:,">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#060a10" id="metaThemeColor">
+  <meta name="theme-color" content="#0c0b09" id="metaThemeColor">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
@@ -23,12 +23,12 @@
         : t;
       document.documentElement.dataset.theme = d;
       var meta = document.getElementById('metaThemeColor');
-      if (meta) meta.content = d === 'light' ? '#f4f5f7' : '#060a10';
+      if (meta) meta.content = d === 'light' ? '#f4f5f7' : '#0c0b09';
     })();
   </script>
 
-  <link rel="stylesheet" href="src/styles/tokens.css?v=3">
-  <link rel="stylesheet" href="src/styles/app.css?v=3">
+  <link rel="stylesheet" href="src/styles/tokens.css?v=4">
+  <link rel="stylesheet" href="src/styles/app.css?v=4">
 
   <style>
     /* Router loading indicator */
@@ -182,6 +182,8 @@
   </style>
 </head>
 <body>
+  <!-- Film grain overlay (V2 design) -->
+  <div class="grain-overlay" aria-hidden="true"></div>
 
   <!-- GATE login -->
   <div id="gate" class="center-screen">
@@ -195,13 +197,11 @@
     <nav class="kino-nav">
       <span class="kino-logo" id="homeBtn"><em>Kino</em></span>
       <div class="kino-tabs" id="tabs"></div>
-      <button data-action="theme-toggle" class="nav-icon" title="Toggle theme" style="font-size:1.1rem">☀︎</button>
-      <button id="settingsBtn" class="nav-icon" title="Impostazioni">⚙</button>
-      <button id="logoutBtn"   class="nav-icon" title="Esci" style="font-size:1rem">⏻</button>
+<button id="settingsBtn" class="nav-icon" title="Impostazioni">⚙</button>
     </nav>
     <main id="view"></main>
   </div>
 
-  <script type="module" src="src/main.js?v=3"></script>
+  <script type="module" src="src/main.js?v=4"></script>
 </body>
 </html>

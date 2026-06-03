@@ -74,10 +74,6 @@ const viewEl    = document.getElementById('view');
 const tabsEl    = document.getElementById('tabs');
 
 document.getElementById('loginBtn').addEventListener('click', () => login());
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    storeDestroy();
-    logout();
-});
 
 document.getElementById('homeBtn').addEventListener('click', () => router.navigate('home'));
 

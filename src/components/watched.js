@@ -54,10 +54,27 @@ export function openWatchedModal(movie, options = {}) {
                    value="${init.date}" style="max-width:200px">
           </div>
 
-          <div class="watched-field">
-            <label class="filter-section-label">${i18n.t('impressions')}</label>
-            <textarea class="filter-input" id="wNotes" rows="3"
-                      placeholder="${i18n.t('impressions')}">${esc(init.notes)}</textarea>
+          <div class="watched-field" id="wNotesField">
+            <div class="impressions-header">
+              <label class="filter-section-label">${i18n.t('impressions')}</label>
+              <button type="button" class="review-remove-file" id="wRemoveFile" hidden title="Remove file">✕ Remove file</button>
+            </div>
+            <!-- Textarea (default) -->
+            <textarea class="filter-input review-textarea" id="wNotes" rows="4"
+                      placeholder="${i18n.t('impressions')}"
+                      ondragover="event.preventDefault();this.closest('.review-textarea-wrap')?.classList.add('drag-over')"
+                      ondragleave="this.closest('.review-textarea-wrap')?.classList.remove('drag-over')"
+                      ondrop="event.preventDefault()">${esc(init.notes)}</textarea>
+            <!-- Drop hint overlay on the textarea -->
+            <div class="review-drop-hint" id="wDropHint">
+              <input type="file" id="wUploadInput" accept=".pdf,.html,.htm,.txt" style="display:none">
+              <span>📄</span>
+              <span>Drop a file here</span>
+              <span class="review-upload-hint">PDF · HTML · TXT</span>
+              <button type="button" class="review-upload-browse" id="wBrowse">or browse</button>
+            </div>
+            <!-- Preview (shown after file load, replaces textarea) -->
+            <div class="review-preview" id="wPreview" hidden></div>
           </div>
 
           <!-- AI Analysis Block -->
@@ -100,15 +117,95 @@ export function openWatchedModal(movie, options = {}) {
         display.textContent = `★ ${parseFloat(slider.value).toFixed(1)}`;
     });
 
+    // ── File preview (PDF / HTML / TXT inline, replaces textarea) ───────────
+    const wNotes      = overlay.querySelector('#wNotes');
+    const wPreview    = overlay.querySelector('#wPreview');
+    const wRemoveFile = overlay.querySelector('#wRemoveFile');
+    const uploadInput = overlay.querySelector('#wUploadInput');
+    let   _blobUrl    = null; // track created blob URLs for cleanup
+
+    overlay.querySelector('#wBrowse').addEventListener('click', () => uploadInput.click());
+    uploadInput.addEventListener('change', () => {
+        if (uploadInput.files[0]) _handleFile(uploadInput.files[0]);
+    });
+
+    // Drag-over on the textarea itself
+    wNotes.addEventListener('dragover', e => {
+        e.preventDefault(); wNotes.classList.add('drag-over');
+    });
+    wNotes.addEventListener('dragleave', () => wNotes.classList.remove('drag-over'));
+    wNotes.addEventListener('drop', e => {
+        e.preventDefault(); wNotes.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) _handleFile(e.dataTransfer.files[0]);
+    });
+
+    wRemoveFile.addEventListener('click', () => {
+        _clearPreview();
+    });
+
+    function _clearPreview() {
+        if (_blobUrl) { URL.revokeObjectURL(_blobUrl); _blobUrl = null; }
+        wPreview.hidden = true;
+        wPreview.innerHTML = '';
+        wNotes.hidden = false;
+        wRemoveFile.hidden = true;
+    }
+
+    async function _handleFile(file) {
+        const ext  = file.name.split('.').pop().toLowerCase();
+        const name = file.name;
+
+        // Show loading state
+        wNotes.hidden   = true;
+        wPreview.hidden = false;
+        wPreview.innerHTML = `<div class="review-preview-loading">Loading <em>${esc(name)}</em>…</div>`;
+        wRemoveFile.hidden = false;
+
+        try {
+            if (ext === 'pdf') {
+                _blobUrl = URL.createObjectURL(file);
+                wPreview.innerHTML = `
+                  <div class="review-preview-bar">
+                    <span class="review-preview-filename">📄 ${esc(name)}</span>
+                  </div>
+                  <embed class="review-preview-embed" src="${_blobUrl}#toolbar=0&navpanes=0" type="application/pdf">`;
+            } else if (ext === 'html' || ext === 'htm') {
+                const raw = await file.text();
+                // Sanitise: remove script/style tags, keep layout
+                const clean = raw.replace(/<script[\s\S]*?<\/script>/gi, '')
+                                  .replace(/<style[\s\S]*?<\/style>/gi, '');
+                wPreview.innerHTML = `
+                  <div class="review-preview-bar">
+                    <span class="review-preview-filename">🌐 ${esc(name)}</span>
+                  </div>
+                  <iframe class="review-preview-frame" sandbox="allow-same-origin"
+                          srcdoc="${clean.replace(/"/g, '&quot;')}"></iframe>`;
+            } else if (ext === 'txt') {
+                const text = await file.text();
+                wPreview.innerHTML = `
+                  <div class="review-preview-bar">
+                    <span class="review-preview-filename">📝 ${esc(name)}</span>
+                  </div>
+                  <pre class="review-preview-txt">${esc(text)}</pre>`;
+            } else {
+                _clearPreview();
+                alert('Supported formats: PDF, HTML, TXT');
+            }
+        } catch (err) {
+            wPreview.innerHTML = `<div class="review-preview-loading" style="color:var(--red)">
+              Error loading file: ${esc(err.message)}</div>`;
+        }
+    }
+
     // ── AI analysis ──────────────────────────────────────────────────────────
     let _aiResult   = null; // cached analysis for this modal session
     const aiBtn     = overlay.querySelector('#aiBtn');
     const aiResultEl = overlay.querySelector('#aiResult');
 
     aiBtn.addEventListener('click', async () => {
-        const notes = overlay.querySelector('#wNotes').value.trim();
+        const notes = wNotes.hidden ? '' : wNotes.value.trim();
         if (!notes) {
-            _flashBtn(aiBtn, 'Write your impressions first!');
+            _flashBtn(aiBtn, wNotes.hidden ? 'Switch back to text to analyze' : 'Write your impressions first!');
             return;
         }
 

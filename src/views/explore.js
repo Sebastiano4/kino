@@ -1,5 +1,5 @@
 /** EXPLORE — scoperta film TMDB con filtri avanzati + infinite scroll. */
-import { searchMovies, discoverMovies, posterUrl } from '../services/tmdb.js';
+import { searchMovies, discoverMovies, posterUrl, movieDetails } from '../services/tmdb.js';
 import { imdbRating } from '../services/omdb.js';
 import { createFilterBar, toDiscoverParams } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
@@ -109,18 +109,26 @@ function appendCards(grid, results) {
         { mode: 'explore' });
     });
     grid.appendChild(card);
-    imdbRating({ title: r.title, year: r.year }).then(({ rating }) => {
-      const pill = card.querySelector('.imdb-pill');
-      if (rating) {
-        pill.textContent = `IMDb ${rating}`;
-        const n = parseFloat(rating);
-        pill.classList.toggle('imdb-high', n >= 7);
-        pill.classList.toggle('imdb-low', n < 5);
-      } else {
-        pill.textContent = 'IMDb N/A';
-        pill.classList.add('imdb-na');
-      }
-    });
+    // Fetch TMDB details first to get the canonical imdb_id, then call OMDb
+    movieDetails(r.tmdbId, 'external_ids')
+      .then(details => {
+        const imdbId = details?.external_ids?.imdb_id || details?.imdb_id || null;
+        return imdbRating({ imdbId, title: r.title, year: r.year });
+      })
+      .catch(() => imdbRating({ title: r.title, year: r.year }))
+      .then(({ rating }) => {
+        const pill = card.querySelector('.imdb-pill');
+        if (!pill) return;
+        if (rating) {
+          pill.textContent = `IMDb ${rating}`;
+          const n = parseFloat(rating);
+          pill.classList.toggle('imdb-high', n >= 7);
+          pill.classList.toggle('imdb-low', n < 5);
+        } else {
+          pill.textContent = 'IMDb N/A';
+          pill.classList.add('imdb-na');
+        }
+      });
   });
 }
 
