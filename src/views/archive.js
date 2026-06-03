@@ -7,7 +7,7 @@ import { init, subscribe } from '../core/store.js';
 import i18n from '../core/i18n.js';
 import { posterImg } from '../services/tmdb.js';
 import { movieCard } from '../components/card.js';
-import { createFilterBar, filterMovies, sortMovies } from '../components/filters.js';
+import { createFilterBar, filterMovies, searchMovies, sortMovies } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
 
 export const archive = {
@@ -32,9 +32,7 @@ export const archive = {
         let _q        = '';
 
         const apply = () => {
-            let list = _q
-                ? allMovies.filter(m => (m.title || '').toLowerCase().includes(_q))
-                : allMovies;
+            let list = searchMovies(allMovies, _q);
             list = filterMovies(list, _filters);
             list = sortMovies(list, _sort);
             _render(grid, list, allMovies);

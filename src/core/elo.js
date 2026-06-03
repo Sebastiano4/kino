@@ -109,6 +109,15 @@ function _applyFilters(movies, f) {
             if (!genres.some(g => g.includes(gl))) return false;
         }
 
+        // genres: multi-select list, any selected genre can match.
+        if (f.genres?.length) {
+            const wanted = f.genres.map(g => String(g).toLowerCase());
+            const genres = Array.isArray(m.genres)
+                ? m.genres.map(g => (typeof g === 'string' ? g : g?.name || '').toLowerCase())
+                : String(m.genres || '').toLowerCase().split(',').map(s => s.trim());
+            if (!wanted.some(w => genres.some(g => g.includes(w)))) return false;
+        }
+
         // runtime bucket
         if (f.runtime) {
             const rt = m.runtime || 0;

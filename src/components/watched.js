@@ -40,7 +40,7 @@ export function openWatchedModal(movie, options = {}) {
           </div>
 
           <div class="watched-field">
-            <label class="filter-section-label">Voto</label>
+            <label class="filter-section-label">${i18n.t('rating_label')}</label>
             <div class="rating-control">
               <input type="range" class="rating-slider" min="1" max="10" step="0.5"
                      value="${init.rating}" id="wRating">

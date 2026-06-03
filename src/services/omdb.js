@@ -45,7 +45,7 @@ async function fetchOMDb(params) {
 
   const task = async () => {
     const u = await authReady();
-    if (!u) throw new Error('Devi essere autenticato');
+    if (!u) throw new Error('Not authenticated');
     // call proxy with timeout
     const r = await withTimeout(proxy(params), 7000);
     const data = r?.data || null;

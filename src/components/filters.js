@@ -74,14 +74,25 @@ export async function createFilterBar(container, config = {}) {
   panel.hidden = true;
 
   let html = '';
+  if (filters.includes('genre') || filters.includes('rating') || filters.includes('year')) {
+    html += _section(i18n.t('filter_showing'), `<div class="filter-presets">
+      <button class="filter-preset" data-preset="topRated">${i18n.t('filter_top_rated')}</button>
+      <button class="filter-preset" data-preset="recent">${i18n.t('filter_recent')}</button>
+      <button class="filter-preset" data-preset="cult">${i18n.t('filter_cult')}</button>
+      <button class="filter-preset" data-preset="hidden">${i18n.t('filter_hidden_gems')}</button>
+      <button class="filter-preset" data-preset="animation">${i18n.t('filter_animation')}</button>
+      <button class="filter-preset" data-preset="marvel">${i18n.t('filter_marvel')}</button>
+      <button class="filter-preset" data-preset="dc">${i18n.t('filter_dc')}</button>
+    </div>`);
+  }
   if (filters.includes('genre') && cachedGenres?.length) {
     html += _section(i18n.t('genre'), `<div class="filter-pills" data-filter="genre">
       ${cachedGenres.map(g => `<button class="filter-pill" data-id="${g.id}">${esc(g.name)}</button>`).join('')}</div>`);
   }
   if (filters.includes('year')) {
     html += _section(i18n.t('year'), `<div class="filter-row">
-      <input class="filter-input" data-filter="yearMin" type="number" placeholder="Da" min="1900" max="2030">
-      <input class="filter-input" data-filter="yearMax" type="number" placeholder="A"  min="1900" max="2030"></div>`);
+      <input class="filter-input" data-filter="yearMin" type="number" placeholder="${i18n.t('from_label')}" min="1900" max="2030">
+      <input class="filter-input" data-filter="yearMax" type="number" placeholder="${i18n.t('to_label')}"  min="1900" max="2030"></div>`);
   }
   if (filters.includes('rating')) {
     html += _section(i18n.t('rating'), `<div class="filter-row">
@@ -127,8 +138,13 @@ export async function createFilterBar(container, config = {}) {
   html += `<button class="filter-clear" data-action="clear">${i18n.t('clearFilters')}</button>`;
   panel.innerHTML = html;
 
+  const summary = document.createElement('div');
+  summary.className = 'filter-summary';
+  summary.hidden = true;
+
   container.appendChild(bar);
   container.appendChild(panel);
+  container.appendChild(summary);
 
   // ── Leak-safe event wiring ─────────────────────────────────────────────────
   // All listeners are registered on a shared AbortController. destroy() aborts
@@ -165,6 +181,29 @@ export async function createFilterBar(container, config = {}) {
     }
   }
 
+  panel.querySelectorAll('[data-preset]').forEach(p => {
+    p.addEventListener('click', () => {
+      _clearState(state);
+      const preset = p.dataset.preset;
+      const nowYear = new Date().getFullYear();
+      if (preset === 'topRated') state.ratingMin = '8';
+      if (preset === 'recent') state.yearMin = String(nowYear - 4);
+      if (preset === 'cult') { state.yearMax = '1999'; state.ratingMin = '7'; }
+      if (preset === 'hidden') { state.ratingMin = '7'; state.ratingMax = '8'; }
+      if (preset === 'animation') {
+        const g = (cachedGenres || []).find(x => x.name.toLowerCase() === 'animation');
+        if (g) state.genre = [g.id];
+      }
+      if (preset === 'marvel' && searchInput) searchInput.value = 'Marvel';
+      if (preset === 'dc' && searchInput) searchInput.value = 'DC';
+      _syncControls(panel, state);
+      _updateCount(toggleBtn, state);
+      _updateSummary(summary, state);
+      if ((preset === 'marvel' || preset === 'dc') && onSearch) onSearch();
+      else emit();
+    }, sig);
+  });
+
   // ── Sort select ─────────────────────────────────────────────────────────────
   const sortSel = bar.querySelector('.sort-select');
   if (sortSel) {
@@ -178,7 +217,7 @@ export async function createFilterBar(container, config = {}) {
       const i  = state.genre.indexOf(id);
       if (i >= 0) { state.genre.splice(i, 1); p.classList.remove('active'); }
       else        { state.genre.push(id);      p.classList.add('active'); }
-      _updateCount(toggleBtn, state); emit();
+      _updateCount(toggleBtn, state); _updateSummary(summary, state); emit();
     }, sig);
   });
 
@@ -190,7 +229,7 @@ export async function createFilterBar(container, config = {}) {
         panel.querySelectorAll(`[data-filter="${key}"] .filter-pill`).forEach(x => x.classList.remove('active'));
         state[key] = was ? '' : p.dataset.value;
         if (!was) p.classList.add('active');
-        _updateCount(toggleBtn, state); emit();
+        _updateCount(toggleBtn, state); _updateSummary(summary, state); emit();
       }, sig);
     });
   });
@@ -200,7 +239,7 @@ export async function createFilterBar(container, config = {}) {
     p.addEventListener('click', () => {
       state.favorite = !state.favorite;
       p.classList.toggle('active', state.favorite);
-      _updateCount(toggleBtn, state); emit();
+      _updateCount(toggleBtn, state); _updateSummary(summary, state); emit();
     }, sig);
   });
 
@@ -211,7 +250,7 @@ export async function createFilterBar(container, config = {}) {
       input.addEventListener('input', () => {
         state[key] = input.value;
         clearTimeout(debounce);
-        debounce = setTimeout(() => { _updateCount(toggleBtn, state); emit(); }, 300);
+        debounce = setTimeout(() => { _updateCount(toggleBtn, state); _updateSummary(summary, state); emit(); }, 300);
       }, sig);
     }
   });
@@ -219,23 +258,37 @@ export async function createFilterBar(container, config = {}) {
   // ── Language select ──────────────────────────────────────────────────────────
   const langSel = panel.querySelector('[data-filter="language"]');
   if (langSel) {
-    langSel.addEventListener('change', () => { state.language = langSel.value; _updateCount(toggleBtn, state); emit(); }, sig);
+    langSel.addEventListener('change', () => { state.language = langSel.value; _updateCount(toggleBtn, state); _updateSummary(summary, state); emit(); }, sig);
   }
+
+  summary.addEventListener('click', e => {
+    const key = e.target.closest('[data-remove]')?.dataset.remove;
+    if (!key) return;
+    if (key === 'genre') state.genre = [];
+    else if (key === 'year') { state.yearMin = ''; state.yearMax = ''; }
+    else if (key === 'rating') { state.ratingMin = ''; state.ratingMax = ''; }
+    else if (key === 'favorite') state.favorite = false;
+    else state[key] = '';
+    _syncControls(panel, state);
+    _updateCount(toggleBtn, state);
+    _updateSummary(summary, state);
+    emit();
+  }, sig);
 
   // ── Clear all ────────────────────────────────────────────────────────────────
   panel.querySelector('[data-action="clear"]')?.addEventListener('click', () => {
-    state.genre = []; state.yearMin = ''; state.yearMax = '';
-    state.ratingMin = ''; state.ratingMax = ''; state.runtime = '';
-    state.language = ''; state.country = ''; state.director = ''; state.cast = '';
-    state.status = ''; state.favorite = false; state.addedRange = '';
-    panel.querySelectorAll('.filter-pill').forEach(p  => p.classList.remove('active'));
-    panel.querySelectorAll('.filter-input').forEach(i => { i.value = ''; });
-    panel.querySelectorAll('.filter-select').forEach(s => { s.value = ''; });
-    _updateCount(toggleBtn, state); emit();
+    _clearState(state);
+    _syncControls(panel, state);
+    _updateCount(toggleBtn, state);
+    _updateSummary(summary, state);
+    emit();
   }, sig);
 
   // ── emit ─────────────────────────────────────────────────────────────────────
-  function emit() { onChange({ ...state, genre: [...state.genre] }, state.sort); }
+  function emit() {
+    _updateSummary(summary, state);
+    onChange({ ...state, genre: [...state.genre] }, state.sort);
+  }
 
   // ── Public interface ──────────────────────────────────────────────────────────
   return {
@@ -256,6 +309,7 @@ export async function createFilterBar(container, config = {}) {
       searchDebounce = null;
       if (bar.parentNode)   bar.parentNode.removeChild(bar);   // 3. remove DOM
       if (panel.parentNode) panel.parentNode.removeChild(panel);
+      if (summary.parentNode) summary.parentNode.removeChild(summary);
       // 4. Break closure retention — GC can now collect state, emit, etc.
     },
   };
@@ -349,6 +403,19 @@ export function filterMovies(movies, state) {
   });
 }
 
+export function searchMovies(movies, query) {
+  const q = String(query || '').toLowerCase().trim();
+  if (!q) return movies;
+  return movies.filter(m => {
+    const haystack = [
+      m.title, m.originalTitle, m.director, m.year, m.releaseDate,
+      ...(Array.isArray(m.cast) ? m.cast : []),
+      ...(Array.isArray(m.genres) ? m.genres.map(g => typeof g === 'string' ? g : g?.name) : [m.genres]),
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(q);
+  });
+}
+
 /** Client-side sort. */
 export function sortMovies(movies, sortKey) {
   const s = [...movies];
@@ -369,6 +436,16 @@ export function sortMovies(movies, sortKey) {
       });
     case 'elo':
       return s.sort((a, b) => (b.eloRating || 1200) - (a.eloRating || 1200));
+    case 'rt':
+      return s.sort((a, b) => (parseFloat(b.rottenTomatoes || b.rtScore) || 0) - (parseFloat(a.rottenTomatoes || a.rtScore) || 0));
+    case 'release':
+      return s.sort((a, b) => String(b.releaseDate || b.year || '').localeCompare(String(a.releaseDate || a.year || '')));
+    case 'personal':
+      return s.sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
+    case 'wins':
+      return s.sort((a, b) => (b.eloWins || b.wins || 0) - (a.eloWins || a.wins || 0));
+    case 'battles':
+      return s.sort((a, b) => (b.eloMatches || 0) - (a.eloMatches || 0));
     case 'popularity': default:
       return s.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   }
@@ -402,13 +479,53 @@ function _sortLabel(key) {
     title_asc: 'sort_title_asc',
     title_desc: 'sort_title_desc',
     added: 'sort_added',
-    elo: 'sort_elo'
+    elo: 'sort_elo',
+    rt: 'sort_rt',
+    release: 'sort_release',
+    personal: 'sort_personal',
+    wins: 'sort_wins',
+    battles: 'sort_battles'
   };
   return i18n.t(map[key] || key);
 }
 
 function _section(label, content) {
   return `<div class="filter-section"><div class="filter-section-label">${label}</div>${content}</div>`;
+}
+
+function _clearState(state) {
+  state.genre = []; state.yearMin = ''; state.yearMax = '';
+  state.ratingMin = ''; state.ratingMax = ''; state.runtime = '';
+  state.language = ''; state.country = ''; state.director = ''; state.cast = '';
+  state.status = ''; state.favorite = false; state.addedRange = '';
+}
+
+function _syncControls(panel, state) {
+  panel.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  panel.querySelectorAll('[data-filter="genre"] .filter-pill').forEach(p => {
+    p.classList.toggle('active', state.genre.includes(Number(p.dataset.id)));
+  });
+  ['runtime', 'status', 'addedRange'].forEach(key => {
+    panel.querySelectorAll(`[data-filter="${key}"] .filter-pill`).forEach(p => p.classList.toggle('active', state[key] === p.dataset.value));
+  });
+  panel.querySelectorAll('[data-filter="favorite"] .filter-pill').forEach(p => p.classList.toggle('active', state.favorite));
+  panel.querySelectorAll('.filter-input').forEach(i => { i.value = state[i.dataset.filter] || ''; });
+  panel.querySelectorAll('.filter-select').forEach(s => { if (s.dataset.filter) s.value = state[s.dataset.filter] || ''; });
+}
+
+function _updateSummary(summary, state) {
+  const chips = [];
+  if (state.genre?.length) chips.push(['genre', `${i18n.t('genre')}: ${state.genre.length}`]);
+  if (state.yearMin || state.yearMax) chips.push(['year', `${i18n.t('year')}: ${state.yearMin || '1900'}-${state.yearMax || '2030'}`]);
+  if (state.ratingMin || state.ratingMax) chips.push(['rating', `${i18n.t('rating')}: ${state.ratingMin || '0'}-${state.ratingMax || '10'}`]);
+  ['runtime','language','country','director','cast','status','addedRange'].forEach(k => {
+    if (state[k]) chips.push([k, state[k]]);
+  });
+  if (state.favorite) chips.push(['favorite', i18n.t('favorites')]);
+  summary.hidden = !chips.length;
+  summary.innerHTML = chips.length
+    ? `<span>${i18n.t('filter_showing')}:</span>${chips.map(([k, v]) => `<button class="filter-summary-chip" data-remove="${k}">${esc(v)} <span>×</span></button>`).join('')}`
+    : '';
 }
 
 function esc(s) {

@@ -9,7 +9,7 @@ import { queueOperation, getPending, clearOperation } from './offline.js';
 
 function uid() {
     const u = getUser();
-    if (!u) throw new Error('Non autenticato');
+    if (!u) throw new Error('Not authenticated');
     return u.uid;
 }
 
@@ -86,7 +86,8 @@ export async function saveProfile(patch) {
 /** Match history (Elo battles). */
 export async function addMatch(data) {
     try {
-        await addDoc(matchesCol(), { ...data, createdAt: serverTimestamp() });
+        const ref = await addDoc(matchesCol(), { ...data, createdAt: serverTimestamp() });
+        return ref.id;
     } catch (e) {
         if (!navigator.onLine) {
             await queueOperation({ op: 'add', col: 'matches', data });
@@ -99,6 +100,13 @@ export async function addMatch(data) {
 export async function getMatches() {
     const snap = await getDocs(matchesCol());
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function deleteMatch(id) {
+    if (!id) return;
+    try {
+        await deleteDoc(doc(db, 'apps', APP_ID, 'users', uid(), 'matches', id));
+    } catch {}
 }
 
 /** Flush offline queue to Firestore. */

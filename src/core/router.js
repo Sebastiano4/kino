@@ -104,7 +104,7 @@ export async function navigate(id, pushHash = true) {
 
     _hideLoadingSpinner();
     if (!view) {
-        _rootEl.innerHTML = `<div class="center-screen empty"><div class="big">Errore</div>Impossibile caricare questa vista.</div>`;
+        _rootEl.innerHTML = `<div class="center-screen empty"><div class="big">Error</div>Unable to load this view.</div>`;
         return;
     }
 
@@ -118,7 +118,7 @@ export async function navigate(id, pushHash = true) {
         await view.mount(_rootEl, _ctx);
     } catch (e) {
         console.error('[router] mount error', e);
-        _rootEl.innerHTML = `<div class="center-screen empty"><div class="big">Errore</div>${e.message}</div>`;
+        _rootEl.innerHTML = `<div class="center-screen empty"><div class="big">Error</div>${e.message}</div>`;
     }
 }
 

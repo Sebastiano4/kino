@@ -14,9 +14,11 @@
  */
 
 import { init, subscribe } from '../core/store.js';
-import { getMatches } from '../data/repo.js';
+import { getMatches, updateMovie } from '../data/repo.js';
 import i18n from '../core/i18n.js';
 import { tierOf, seedElo } from '../core/elo.js';
+import { sortMovies } from '../components/filters.js';
+import { openDetail } from '../components/detail.js';
 
 // ── Chart.js lazy loader ──────────────────────────────────────────────────
 let _Chart = null;
@@ -48,7 +50,8 @@ export const vault = {
           <div class="vault-page">
             <h2 class="serif accent" style="margin-bottom:4px">Vault</h2>
             <div class="vault-tabs" id="vaultTabs">
-              <button class="vault-tab active" data-tab="overview">Overview</button>
+              <button class="vault-tab active" data-tab="collection">${i18n.t('vault_collection')}</button>
+              <button class="vault-tab" data-tab="overview">Overview</button>
               <button class="vault-tab" data-tab="charts">Charts</button>
               <button class="vault-tab" data-tab="rankings">Rankings</button>
               <button class="vault-tab" data-tab="directors">Directors</button>
@@ -61,13 +64,20 @@ export const vault = {
         await init();
 
         let rated = [], wl = [], matches = [];
-        let activeTab = 'overview';
+        let activeTab = 'collection';
+        let viewMode = 'grid';
+        let sortKey = 'elo';
 
         const render = async () => {
             _destroyAll();
             const body = el.querySelector('#vaultBody');
             if (!body) return;
             const tab = activeTab;
+            if (tab === 'collection') _renderCollection(body, rated, matches, viewMode, sortKey, next => {
+                if (next.viewMode) viewMode = next.viewMode;
+                if (next.sortKey) sortKey = next.sortKey;
+                render();
+            });
             if (tab === 'overview')  _renderOverview(body, rated, wl, matches);
             if (tab === 'charts')    await _renderCharts(body, rated, matches);
             if (tab === 'rankings')  _renderRankings(body, rated, matches);
@@ -100,6 +110,116 @@ export const vault = {
 };
 
 // ── Overview ───────────────────────────────────────────────────────────────
+
+function _renderCollection(body, rated, matches, viewMode, sortKey, onControl) {
+    const sorted = sortMovies(rated, sortKey);
+    const insights = _collectionInsights(rated, matches);
+    body.innerHTML = `
+      <div class="vault-controls">
+        <div class="vault-view-modes">
+          ${['grid','compact','detailed'].map(mode => `<button class="vault-mode ${viewMode === mode ? 'active' : ''}" data-view="${mode}">${i18n.t(`vault_${mode}`)}</button>`).join('')}
+        </div>
+        <select class="filter-select" id="vaultSort">
+          ${['elo','rating','rt','release','added','title_asc','personal','wins','battles'].map(s => `<option value="${s}" ${s === sortKey ? 'selected' : ''}>${_vaultSortLabel(s)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="vault-section">
+        <h3 class="vault-section-title">${i18n.t('vault_insights')}</h3>
+        <div class="vault-insights">
+          ${_vStat(i18n.t('vault_top_genre'), insights.genre)}
+          ${_vStat(i18n.t('vault_avg_rating'), insights.avg)}
+          ${_vStat(i18n.t('vault_top_decade'), insights.decade)}
+          ${_vStat(i18n.t('vault_highest_elo'), insights.highest)}
+          ${_vStat(i18n.t('vault_controversial'), insights.controversial)}
+        </div>
+      </div>
+      ${sorted.length ? `<div class="vault-collection vault-collection--${viewMode}">
+        ${sorted.map(m => _collectionCard(m, viewMode)).join('')}
+      </div>` : `<div class="vault-empty">${i18n.t('vault_empty')}</div>`}`;
+
+    body.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => onControl({ viewMode: btn.dataset.view })));
+    body.querySelector('#vaultSort')?.addEventListener('change', e => onControl({ sortKey: e.target.value }));
+    body.querySelectorAll('[data-action]').forEach(btn => btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = btn.closest('[data-movie-id]')?.dataset.movieId;
+        const movie = rated.find(m => m.id === id);
+        if (!movie) return;
+        const action = btn.dataset.action;
+        if (action === 'view') openDetail(movie, { mode: 'archive' });
+        if (action === 'favorite') await updateMovie(id, { isFavorite: !movie.isFavorite });
+        if (action === 'watchlist') await updateMovie(id, { isWatchlist: true });
+    }));
+    body.querySelectorAll('[data-movie-id]').forEach(card => card.addEventListener('click', () => {
+        const movie = rated.find(m => m.id === card.dataset.movieId);
+        if (movie) openDetail(movie, { mode: 'archive' });
+    }));
+}
+
+function _collectionCard(m, viewMode) {
+    const poster = m.poster || '';
+    const meta = [m.year, m.director, m.runtime ? `${m.runtime} min` : ''].filter(Boolean).join(' • ');
+    return `<article class="vault-movie-card" data-movie-id="${esc(m.id)}">
+      <div class="vault-movie-poster">
+        <img src="${esc(poster)}" alt="${esc(m.title || '')} poster" loading="lazy">
+        <div class="vault-poster-overlay">
+          <button class="vault-quick" data-action="view">${i18n.t('vault_view')}</button>
+          <button class="vault-quick" data-action="favorite">${m.isFavorite ? '★' : '☆'} ${i18n.t('vault_favorite')}</button>
+          <button class="vault-quick" data-action="watchlist">${i18n.t('vault_watchlist')}</button>
+        </div>
+      </div>
+      <div class="vault-movie-info">
+        <h4>${esc(m.title || '')}</h4>
+        <p>${esc(meta)}</p>
+        ${viewMode !== 'grid' ? `<div class="vault-movie-metrics">
+          <span>Elo ${seedElo(m)}</span>
+          <span>IMDb ${m.imdbRating || '—'}</span>
+          <span>Your ${m.rating || '—'}</span>
+          <span>${m.eloMatches || 0} battles</span>
+        </div>` : ''}
+      </div>
+    </article>`;
+}
+
+function _collectionInsights(rated, matches) {
+    const genres = {};
+    const decades = {};
+    rated.forEach(m => {
+        _movieGenres(m).forEach(g => { genres[g] = (genres[g] || 0) + 1; });
+        const y = Number(m.year) || Number((m.releaseDate || '').slice(0, 4));
+        if (y) {
+            const d = `${Math.floor(y / 10) * 10}s`;
+            decades[d] = (decades[d] || 0) + 1;
+        }
+    });
+    const withImdb = rated.filter(m => m.imdbRating && m.rating);
+    const controversial = withImdb.sort((a, b) => Math.abs(Number(b.rating) - parseFloat(b.imdbRating)) - Math.abs(Number(a.rating) - parseFloat(a.imdbRating)))[0]?.title || '—';
+    return {
+        genre: _topKey(genres),
+        avg: rated.length ? (rated.reduce((s, m) => s + Number(m.rating || 0), 0) / rated.length).toFixed(1) : '—',
+        decade: _topKey(decades),
+        highest: [...rated].sort((a, b) => seedElo(b) - seedElo(a))[0]?.title || '—',
+        controversial,
+    };
+}
+
+function _movieGenres(m) {
+    return Array.isArray(m.genres)
+        ? m.genres.map(g => typeof g === 'string' ? g : g?.name || '').filter(Boolean)
+        : String(m.genres || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function _topKey(obj) {
+    return Object.entries(obj).sort(([, a], [, b]) => b - a)[0]?.[0] || '—';
+}
+
+function _vaultSortLabel(key) {
+    const map = {
+        elo: 'sort_elo', rating: 'sort_rating', rt: 'sort_rt', release: 'sort_release',
+        added: 'sort_added', title_asc: 'sort_title_asc', personal: 'sort_personal',
+        wins: 'sort_wins', battles: 'sort_battles',
+    };
+    return i18n.t(map[key] || key);
+}
 
 function _renderOverview(body, rated, wl, matches) {
     const avgRating  = rated.length ? (rated.reduce((s, m) => s + Number(m.rating), 0) / rated.length).toFixed(1) : '—';
@@ -193,11 +313,11 @@ function _buildConsensusChart(Chart, movies) {
         data: { datasets: [
             { label: 'Film', data, pointRadius: 6, pointHoverRadius: 9,
               backgroundColor: data.map(d => d.y > d.x ? 'rgba(34,197,94,.7)' : d.y < d.x ? 'rgba(239,68,68,.7)' : 'rgba(6,182,212,.7)') },
-            { label: 'Consenso', data: [{x:0,y:0},{x:10,y:10}], type:'line',
+            { label: 'Consensus', data: [{x:0,y:0},{x:10,y:10}], type:'line',
               borderColor:'rgba(255,255,255,.12)', borderDash:[6,4], borderWidth:1, pointRadius:0, fill:false },
         ]},
         options: _scatterOpts({ x:{min:0,max:10,title:{display:true,text:'IMDb'}}, y:{min:0,max:10,title:{display:true,text:i18n.t('your_rating')}} },
-            ctx => { const d=data[ctx.dataIndex]; return d?`${d.title}: IMDb ${d.x} → Tu ${d.y}`:''; }),
+            ctx => { const d=data[ctx.dataIndex]; return d?`${d.title}: IMDb ${d.x} -> You ${d.y}`:''; }),
     }));
 }
 
@@ -214,8 +334,8 @@ function _buildRuntimeChart(Chart, movies) {
             { label:'Trend', data: xs.map(x=>({x, y:_clamp(slope*x+intercept,0,10)})),
               type:'line', borderColor:'#22d3ee', borderWidth:2, pointRadius:0, fill:false },
         ]},
-        options: _scatterOpts({ x:{title:{display:true,text:'Durata (min)'}}, y:{min:0,max:10,title:{display:true,text:i18n.t('your_rating')}} },
-            ctx => { const d=data[ctx.dataIndex]; return d?`${d.title}: ${d.x}min → ${d.y}/10`:''; }),
+        options: _scatterOpts({ x:{title:{display:true,text:'Runtime (min)'}}, y:{min:0,max:10,title:{display:true,text:i18n.t('your_rating')}} },
+            ctx => { const d=data[ctx.dataIndex]; return d?`${d.title}: ${d.x}min -> ${d.y}/10`:''; }),
     }));
 }
 
@@ -231,7 +351,7 @@ function _buildYearChart(Chart, movies) {
             pointRadius: 5, pointHoverRadius: 8,
         }]},
         options: _scatterOpts(
-            { x:{title:{display:true,text:'Anno'}}, y:{min:0,max:10,title:{display:true,text:i18n.t('your_rating')}} },
+            { x:{title:{display:true,text:'Year'}}, y:{min:0,max:10,title:{display:true,text:i18n.t('your_rating')}} },
             ctx => { const d=data[ctx.dataIndex]; return d?`${d.title} (${d.x}): ${d.y}/10`:''; },
         ),
     }));
@@ -427,12 +547,12 @@ function _renderRankings(body, rated, matches) {
               <span class="vault-rank-tier">${tierOf(seedElo(m)).label}</span>
               <span class="vault-rank-elo mono">${seedElo(m)}</span>
             </div>`).join('')}
-        </div>` : '<div class="vault-empty">Nessun film valutato.</div>'}
+        </div>` : `<div class="vault-empty">${i18n.t('vault_no_rated')}</div>`}
       </div>
       <div class="vault-section">
-        <h3 class="vault-section-title">Elo Volatility <span class="vault-hint">I più grandi upset</span></h3>
+        <h3 class="vault-section-title">Elo Volatility <span class="vault-hint">Biggest upsets</span></h3>
         ${upsets.length ? `<div class="vault-upsets">${upsets.map(_upsetCard).join('')}</div>`
-            : '<div class="vault-empty">Nessun upset. Gioca a Battle!</div>'}
+            : `<div class="vault-empty">${i18n.t('vault_no_upsets')}</div>`}
       </div>`;
 }
 
@@ -462,10 +582,10 @@ function _renderDirectors(body, rated) {
             <div class="vault-rank-row">
               <span class="vault-rank-pos mono">${i+1}</span>
               <span class="vault-rank-title serif">${esc(d.name)}</span>
-              <span class="vault-rank-tier" style="font-size:.75rem;color:var(--ink-mute)">${d.films} film</span>
+              <span class="vault-rank-tier" style="font-size:.75rem;color:var(--ink-mute)">${d.films} films</span>
               <span class="vault-rank-elo mono accent">★ ${d.avg.toFixed(1)}</span>
             </div>`).join('')}
-        </div>` : '<div class="vault-empty">Aggiungi registi ai film per sbloccare questa sezione.</div>'}
+        </div>` : `<div class="vault-empty">${i18n.t('vault_add_directors')}</div>`}
       </div>`;
 }
 
@@ -536,7 +656,7 @@ function _upsetCard(m, i) {
       <span class="vault-upset-rank">#${i+1}</span>
       <div class="vault-upset-info">
         <span class="vault-upset-winner">${esc(winner)} <span class="mono">(${wElo})</span></span>
-        <span class="vault-upset-beat">ha battuto</span>
+        <span class="vault-upset-beat">${i18n.t('vault_beat')}</span>
         <span class="vault-upset-loser">${esc(loser)} <span class="mono">(${lElo})</span></span>
       </div>
       <span class="vault-upset-gap">${Math.abs(lElo-wElo)}</span>

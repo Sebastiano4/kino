@@ -47,7 +47,7 @@ function _wpSet(id, region, data) {
 
 async function call(path, params = {}) {
     const u = await authReady();
-    if (!u) throw new Error('Devi essere autenticato');
+    if (!u) throw new Error('Not authenticated');
     const r = await proxy({ path, params });
     return r.data;
 }

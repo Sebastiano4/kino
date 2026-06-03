@@ -104,6 +104,8 @@ export async function openDetail(movie, options = {}) {
                 imdbRating:       imdbRatingVal,
                 imdbVotes:        omdb?.imdbVotes || d.imdbVotes,
                 rtScore:          rtScore || omdb?._rt || null,
+                metascore:        omdb?.metascore || d.metascore || null,
+                tmdbRating:       tmdb.vote_average || d.tmdbRating || null,
                 trailerKey:       trailer?.key || null,
                 _posterPath:      tmdb.poster_path || null,
             });
@@ -120,13 +122,24 @@ export async function openDetail(movie, options = {}) {
     if (bgGlow) bgGlow.style.background =
         `radial-gradient(ellipse at 40% 50%, ${acc}1e 0%, transparent 62%)`;
 
-    // Replace static poster with optimized img element
+    // Replace static poster with optimized img element (keep corner decorations)
     const posterWrap = modal.querySelector('.dm-poster');
-    if (posterWrap && d._posterPath) {
-        posterWrap.innerHTML = '';
-        posterWrap.appendChild(posterImg(d._posterPath, { context: 'modal', alt: d.title || '' }));
-    } else if (posterWrap && d.poster) {
-        posterWrap.innerHTML = `<img src="${esc(d.poster)}" alt="${esc(d.title || '')}" style="width:100%;height:100%;object-fit:cover;">`;
+    if (posterWrap) {
+        // Keep corner elements, insert img before them
+        const corners = posterWrap.innerHTML; // save corner spans
+        if (d._posterPath) {
+            const img = posterImg(d._posterPath, { context: 'modal', alt: d.title || '' });
+            posterWrap.innerHTML = corners;
+            posterWrap.insertBefore(img, posterWrap.firstChild);
+        } else if (d.poster) {
+            posterWrap.innerHTML = `<img src="${esc(d.poster)}" alt="${esc(d.title || '')}" style="width:100%;height:100%;object-fit:cover;">${corners}`;
+        }
+        // Poster lightbox on click
+        const posterSrc = d._posterPath ? posterUrl(d._posterPath, 'w780') : d.poster;
+        if (posterSrc) {
+            posterWrap.addEventListener('click', () => _openLightbox(posterSrc, d.title || ''));
+            posterWrap.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _openLightbox(posterSrc, d.title || ''); }});
+        }
     }
 
     modal.querySelector('.modal-close')?.addEventListener('click', close);
@@ -209,26 +222,26 @@ async function _appendProviders(modal, tmdbId) {
 
         placeholder.innerHTML = `
           <div class="providers-section">
-            <h4 class="providers-title">Where to Watch</h4>
+            <h4 class="providers-title">${i18n.t('where_to_watch')}</h4>
             ${flatrate.length ? `
               <div class="providers-row">
-                <span class="providers-label">Stream</span>
+                <span class="providers-label">${i18n.t('stream_label')}</span>
                 <div class="providers-logos">${flatrate.slice(0, 6).map(_providerChip).join('')}</div>
               </div>` : ''}
             ${rent.length ? `
               <div class="providers-row">
-                <span class="providers-label">Rent</span>
+                <span class="providers-label">${i18n.t('rent_label')}</span>
                 <div class="providers-logos">${rent.slice(0, 4).map(_providerChip).join('')}</div>
               </div>` : ''}
             ${buy.length ? `
               <div class="providers-row">
-                <span class="providers-label">Buy</span>
+                <span class="providers-label">${i18n.t('buy_label')}</span>
                 <div class="providers-logos">${buy.slice(0, 4).map(_providerChip).join('')}</div>
               </div>` : ''}
             <a href="${esc(link)}" target="_blank" rel="noopener noreferrer" class="providers-link">
-              All options on TMDB ↗
+              ${i18n.t('all_options_tmdb')} ↗
             </a>
-            <p class="providers-credit">Provided by JustWatch</p>
+            <p class="providers-credit">${i18n.t('provided_by_justwatch')}</p>
           </div>`;
 
         // Wire logo clicks to provider link
@@ -283,7 +296,6 @@ function _renderModal(d, options = {}) {
     const metaLine  = metaParts.join('<span class="dm-sep"> · </span>');
 
     // ── Genre pills ───────────────────────────────────────────────────────────
-    // ── Genre pills ───────────────────────────────────────────────────────────
     const genrePills = (d.genres || []).slice(0, 4)
         .map(g => `<span class="dm-genre-pill">${esc(g)}</span>`).join('');
 
@@ -304,7 +316,7 @@ function _renderModal(d, options = {}) {
                   :               '#7A7A7A';
 
     // ── Action buttons ────────────────────────────────────────────────────────
-    const trailerBtn = `<button class="dm-action-btn dm-action-primary" data-action="trailer">&#9654; Trailer</button>`;
+    const trailerBtn = `<button class="dm-action-btn dm-action-primary" data-action="trailer" aria-label="${i18n.t('trailer')}">&#9654; ${i18n.t('trailer')}</button>`;
     let editBtn = '', favBtn = '';
     if (mode === 'explore') {
         editBtn = `<button class="dm-action-btn" data-action="watch">${i18n.t('mark_watched')}</button>`;
@@ -331,11 +343,29 @@ function _renderModal(d, options = {}) {
         ${tier      ? `<div class="dm-stat"><div class="dm-stat-val" style="font-size:.82rem;letter-spacing:.06em">${tier.toUpperCase()}</div><div class="dm-stat-label">TIER</div></div>` : ''}
       </div>` : '';
 
-    return `
-      <button class="modal-close">&times;</button>
+    // ── Metacritic ──────────────────────────────────────────────────────────
+    const metaVal   = d.metascore ? parseInt(d.metascore) : null;
+    const metaColor = !metaVal      ? 'var(--ink-mute)'
+                    : metaVal >= 61 ? '#66cc33'
+                    : metaVal >= 40 ? '#ffcc33'
+                    :                 '#ff0000';
 
-      <div class="dm-hero">
-        <div class="dm-poster"></div>
+    // ── TMDB ─────────────────────────────────────────────────────────────────
+    const tmdbVal = d.tmdbRating ? parseFloat(d.tmdbRating) : null;
+
+    return `
+      <button class="modal-close" aria-label="Close">&times;</button>
+
+      <div class="dm-hero" role="banner">
+        <div class="dm-poster-wrap">
+          <div class="dm-poster" role="button" tabindex="0" aria-label="${esc(d.title || '')} — ${i18n.t('view_poster')}">
+            <span class="dm-corner dm-corner-tl"></span>
+            <span class="dm-corner dm-corner-tr"></span>
+            <span class="dm-corner dm-corner-bl"></span>
+            <span class="dm-corner dm-corner-br"></span>
+          </div>
+          ${year ? `<div class="dm-poster-year">${year}</div>` : ''}
+        </div>
         <div class="dm-info">
           ${eyebrow ? `<div class="dm-eyebrow">${eyebrow}</div>` : ''}
           <h2 class="dm-title">${esc(d.title || '')}</h2>
@@ -345,7 +375,7 @@ function _renderModal(d, options = {}) {
         </div>
       </div>
 
-      <div class="dm-ratings">
+      <div class="dm-ratings" role="region" aria-label="Ratings">
         <div class="dm-rating-col">
           <div class="dm-rating-label">YOUR RATING</div>
           <div class="dm-rating-val">${userRating ? `&#9733; ${userRating}` : '&mdash;'}</div>
@@ -358,6 +388,14 @@ function _renderModal(d, options = {}) {
           <div class="dm-rating-label" style="color:${rtColor}">TOMATOMETER</div>
           <div class="dm-rating-val"  style="color:${rtColor}">${rtVal || '&mdash;'}</div>
         </div>
+        ${metaVal ? `<div class="dm-rating-col">
+          <div class="dm-rating-label" style="color:${metaColor}">METACRITIC</div>
+          <div class="dm-rating-val" style="color:${metaColor}">${metaVal} <span class="dm-rating-sub">/100</span></div>
+        </div>` : ''}
+        ${tmdbVal ? `<div class="dm-rating-col">
+          <div class="dm-rating-label" style="color:#01d277">TMDB</div>
+          <div class="dm-rating-val" style="color:#01d277">${tmdbVal.toFixed(1)} <span class="dm-rating-sub">/10</span></div>
+        </div>` : ''}
         <div class="dm-rating-col">
           <div class="dm-rating-label">VS WORLD</div>
           <div class="dm-rating-val"  style="color:${vsColor}">${vsWorld ? `${vsSign}${vsWorld}` : '&mdash;'}</div>
@@ -370,13 +408,13 @@ function _renderModal(d, options = {}) {
 
       ${d.plot ? `
       <div class="dm-section">
-        <div class="dm-section-label">SYNOPSIS</div>
+        <div class="dm-section-label">${i18n.t('synopsis').toUpperCase()}</div>
         <p class="dm-synopsis">${esc(d.plot)}</p>
       </div>` : ''}
 
       ${d.notes ? `
       <div class="dm-section">
-        <div class="dm-section-label">YOUR NOTES</div>
+        <div class="dm-section-label">${i18n.t('your_notes').toUpperCase()}</div>
         <p class="dm-synopsis" style="font-style:italic">&ldquo;${esc(d.notes)}&rdquo;</p>
       </div>` : ''}
 
@@ -454,4 +492,25 @@ const _ACCENTS = {
 function _directorAccent(director) {
     if (!director) return '#C8A97E';
     return _ACCENTS[director] || '#C8A97E';
+}
+
+// ── Poster lightbox ──────────────────────────────────────────────────────
+
+function _openLightbox(src, title) {
+    const lb = document.createElement('div');
+    lb.className = 'poster-lightbox';
+    lb.setAttribute('role', 'dialog');
+    lb.setAttribute('aria-label', title);
+    lb.innerHTML = `
+      <button class="poster-lightbox-close" aria-label="Close">&times;</button>
+      <img src="${esc(src)}" alt="${esc(title)}" class="poster-lightbox-img">`;
+
+    const closeLb = () => { lb.remove(); document.removeEventListener('keydown', onLbKey); };
+    const onLbKey = e => { if (e.key === 'Escape') closeLb(); };
+    document.addEventListener('keydown', onLbKey);
+    lb.addEventListener('click', e => { if (e.target === lb) closeLb(); });
+    lb.querySelector('.poster-lightbox-close').addEventListener('click', closeLb);
+
+    document.body.appendChild(lb);
+    lb.querySelector('.poster-lightbox-close').focus();
 }

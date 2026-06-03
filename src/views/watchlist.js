@@ -11,7 +11,7 @@
 import { init, subscribe } from '../core/store.js';
 import i18n from '../core/i18n.js';
 import { movieCard } from '../components/card.js';
-import { createFilterBar, filterMovies, sortMovies } from '../components/filters.js';
+import { createFilterBar, filterMovies, searchMovies, sortMovies } from '../components/filters.js';
 import { openDetail } from '../components/detail.js';
 
 // Smart-mode definitions (labels and descriptions are translated via i18n)
@@ -83,9 +83,7 @@ export const watchlist = {
 
         const apply = () => {
             const smartFn = SMART_MODES.find(m => m.id === this._smartMode)?.filter || (() => true);
-            let list = _q
-                ? allMovies.filter(m => (m.title || '').toLowerCase().includes(_q))
-                : allMovies;
+            let list = searchMovies(allMovies, _q);
             list = list.filter(smartFn);
             list = filterMovies(list, _filters);
             list = sortMovies(list, _sort);
