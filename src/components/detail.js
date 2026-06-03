@@ -343,16 +343,6 @@ function _renderModal(d, options = {}) {
         ${tier      ? `<div class="dm-stat"><div class="dm-stat-val" style="font-size:.82rem;letter-spacing:.06em">${tier.toUpperCase()}</div><div class="dm-stat-label">TIER</div></div>` : ''}
       </div>` : '';
 
-    // ── Metacritic ──────────────────────────────────────────────────────────
-    const metaVal   = d.metascore ? parseInt(d.metascore) : null;
-    const metaColor = !metaVal      ? 'var(--ink-mute)'
-                    : metaVal >= 61 ? '#66cc33'
-                    : metaVal >= 40 ? '#ffcc33'
-                    :                 '#ff0000';
-
-    // ── TMDB ─────────────────────────────────────────────────────────────────
-    const tmdbVal = d.tmdbRating ? parseFloat(d.tmdbRating) : null;
-
     return `
       <button class="modal-close" aria-label="Close">&times;</button>
 
@@ -388,14 +378,6 @@ function _renderModal(d, options = {}) {
           <div class="dm-rating-label" style="color:${rtColor}">TOMATOMETER</div>
           <div class="dm-rating-val"  style="color:${rtColor}">${rtVal || '&mdash;'}</div>
         </div>
-        ${metaVal ? `<div class="dm-rating-col">
-          <div class="dm-rating-label" style="color:${metaColor}">METACRITIC</div>
-          <div class="dm-rating-val" style="color:${metaColor}">${metaVal} <span class="dm-rating-sub">/100</span></div>
-        </div>` : ''}
-        ${tmdbVal ? `<div class="dm-rating-col">
-          <div class="dm-rating-label" style="color:#01d277">TMDB</div>
-          <div class="dm-rating-val" style="color:#01d277">${tmdbVal.toFixed(1)} <span class="dm-rating-sub">/10</span></div>
-        </div>` : ''}
         <div class="dm-rating-col">
           <div class="dm-rating-label">VS WORLD</div>
           <div class="dm-rating-val"  style="color:${vsColor}">${vsWorld ? `${vsSign}${vsWorld}` : '&mdash;'}</div>

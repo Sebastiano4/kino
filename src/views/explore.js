@@ -125,8 +125,7 @@ function appendCards(grid, results) {
           pill.classList.toggle('imdb-high', n >= 7);
           pill.classList.toggle('imdb-low', n < 5);
         } else {
-          pill.textContent = 'IMDb N/A';
-          pill.classList.add('imdb-na');
+          pill.remove();
         }
       });
   });

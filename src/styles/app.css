@@ -920,7 +920,7 @@ textarea.filter-input {
    ═══════════════════════════════════════════════════════════════════ */
 
 /* Override modal width for detail */
-.modal { max-width: 760px; padding: 0; overflow: hidden; }
+.modal { max-width: 760px; padding: 0; overflow-y: auto; }
 
 /* ── Hero ──────────────────────────────────────────────────────────── */
 .dm-hero {
