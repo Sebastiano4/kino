@@ -353,6 +353,10 @@ function _renderModal(d, options = {}) {
             <span class="dm-corner dm-corner-tr"></span>
             <span class="dm-corner dm-corner-bl"></span>
             <span class="dm-corner dm-corner-br"></span>
+            <div class="dm-poster-overlay" aria-hidden="true">
+              <span class="dm-poster-title">${esc(d.title || '')}</span>
+              ${d.director ? `<span class="dm-poster-dir">${esc(d.director)}</span>` : ''}
+            </div>
           </div>
           ${year ? `<div class="dm-poster-year">${year}</div>` : ''}
         </div>
