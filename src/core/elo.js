@@ -22,6 +22,16 @@
 
 export const INITIAL_ELO = 1200;
 
+export const TIERS = [
+    { key: 'legendary',   label: 'Legendary' },
+    { key: 'grandmaster', label: 'Grandmaster' },
+    { key: 'master',      label: 'Master' },
+    { key: 'elite',       label: 'Elite' },
+    { key: 'veteran',     label: 'Veteran' },
+    { key: 'pro',         label: 'Pro' },
+    { key: 'rookie',      label: 'Rookie' },
+];
+
 export const kFactor = (matches = 0) => (matches <= 10 ? 40 : 20);
 
 export function expectedScore(ratingA, ratingB) {
@@ -125,6 +135,12 @@ function _applyFilters(movies, f) {
             if (f.runtime === 'short'  && rt >= 90)           return false;
             if (f.runtime === 'medium' && (rt < 90 || rt > 150)) return false;
             if (f.runtime === 'long'   && rt <= 150)           return false;
+        }
+
+        // tier filter
+        if (f.tiers?.length) {
+            const t = tierOf(seedElo(m));
+            if (!f.tiers.includes(t.key)) return false;
         }
 
         // watchedYear: year part of m.watchedDate  (format YYYY-MM-DD)

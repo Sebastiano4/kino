@@ -4,7 +4,7 @@
 
 import { init, getState } from '../core/store.js';
 import { updateMovie, addMatch, deleteMatch } from '../data/repo.js';
-import { pickPair, resolveMatch, tierOf, seedElo } from '../core/elo.js';
+import { pickPair, resolveMatch, tierOf, seedElo, TIERS } from '../core/elo.js';
 import { posterUrl } from '../services/tmdb.js';
 import i18n from '../core/i18n.js';
 
@@ -157,6 +157,7 @@ export const battle = {
             if (e.target?.matches?.('input, textarea, select')) return;
             if (e.key === 'ArrowLeft') choose(true);
             if (e.key === 'ArrowRight') choose(false);
+            if (e.key === 'Enter' && locked) { e.preventDefault(); renderRound(); }
             if (e.key.toLowerCase() === 's') skip();
             if (e.key.toLowerCase() === 'u') undo();
         };
@@ -182,20 +183,19 @@ function _buildShell(el, movies, onChange) {
     const directors = [...new Set(movies.map(m => m.director).filter(Boolean))].sort();
     const genres = [...new Set(movies.flatMap(m => _genres(m)))].sort().slice(0, 16);
 
+    const tierCounts = {};
+    movies.forEach(m => { const t = tierOf(seedElo(m)); tierCounts[t.key] = (tierCounts[t.key] || 0) + 1; });
+    const availableTiers = TIERS.filter(t => tierCounts[t.key] >= 1);
+
     el.innerHTML = `
       <div class="battle-page">
         <div class="battle-filters" id="battleFilters">
           <div class="battle-filter-row">
             <select class="filter-select" id="bfDecade">${DECADE_OPTIONS.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}</select>
-            <select class="filter-select" id="bfRuntime">
-              <option value="">All runtimes</option>
-              <option value="short">&lt; 90 min</option>
-              <option value="medium">90-150 min</option>
-              <option value="long">&gt; 150 min</option>
-            </select>
             ${directors.length > 1 ? `<select class="filter-select" id="bfDirector"><option value="">All directors</option>${directors.slice(0,50).map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}</select>` : ''}
             <button class="btn btn-sm" id="bfApply">Filter</button>
           </div>
+          ${availableTiers.length ? `<div class="battle-tier-chips">${availableTiers.map(t => `<button class="filter-pill" data-tier="${esc(t.key)}">${esc(t.label)}</button>`).join('')}</div>` : ''}
           ${genres.length ? `<div class="battle-genre-chips">${genres.map(g => `<button class="filter-pill" data-genre="${esc(g)}">${esc(g)}</button>`).join('')}</div>` : ''}
         </div>
         <div class="battle-layout">
@@ -205,6 +205,8 @@ function _buildShell(el, movies, onChange) {
       </div>`;
 
     const selectedGenres = new Set();
+    const selectedTiers = new Set();
+
     el.querySelectorAll('[data-genre]').forEach(btn => {
         btn.addEventListener('click', () => {
             const genre = btn.dataset.genre;
@@ -214,17 +216,27 @@ function _buildShell(el, movies, onChange) {
             emit();
         });
     });
+
+    el.querySelectorAll('[data-tier]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tier = btn.dataset.tier;
+            btn.classList.toggle('active');
+            if (selectedTiers.has(tier)) selectedTiers.delete(tier);
+            else selectedTiers.add(tier);
+            emit();
+        });
+    });
+
     el.querySelector('#bfApply').addEventListener('click', emit);
 
     function emit() {
         const f = {};
         const decade = el.querySelector('#bfDecade')?.value;
-        const runtime = el.querySelector('#bfRuntime')?.value;
         const director = el.querySelector('#bfDirector')?.value || '';
         if (decade) f.decade = Number(decade);
-        if (runtime) f.runtime = runtime;
         if (director) f.director = director;
         if (selectedGenres.size) f.genres = [...selectedGenres];
+        if (selectedTiers.size) f.tiers = [...selectedTiers];
         onChange(f);
     }
 }
@@ -345,12 +357,9 @@ function _filteredCount(movies, f) {
             const y = Number(m.year) || Number((m.releaseDate || '').slice(0, 4));
             if (!y || y < f.decade || y > f.decade + 9) return false;
         }
-        if (f.runtime) {
-            const rt = m.runtime || 0;
-            if (!rt) return false;
-            if (f.runtime === 'short' && rt >= 90) return false;
-            if (f.runtime === 'medium' && (rt < 90 || rt > 150)) return false;
-            if (f.runtime === 'long' && rt <= 150) return false;
+        if (f.tiers?.length) {
+            const t = tierOf(seedElo(m));
+            if (!f.tiers.includes(t.key)) return false;
         }
         if (f.director && !(m.director || '').toLowerCase().includes(f.director.toLowerCase())) return false;
         if (f.genres?.length && !f.genres.some(g => _genres(m).includes(g))) return false;
