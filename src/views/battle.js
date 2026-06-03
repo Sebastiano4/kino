@@ -290,7 +290,6 @@ function _resultCard(m, winner, delta) {
     const src = m.poster || posterUrl(m.poster_path || m.posterPath || '') || '';
     return `<div class="battle-result-card ${winner ? 'winner' : 'loser'}">
       <span class="battle-result-badge">${winner ? i18n.t('battle_winner_badge') : i18n.t('battle_loser_badge')}</span>
-      <span class="elo-delta-float ${delta > 0 ? 'up' : 'down'}">${_fmtDelta(delta)}</span>
       <div class="poster"><img alt="${esc(m.title || '')} poster" src="${esc(src)}"></div>
       <div class="battle-info">
         <span class="title">${esc(m.title)}</span>
@@ -371,7 +370,7 @@ function _prompt(prefix, count) {
 
 function _fmtDelta(n) {
     const v = Number(n || 0);
-    return `${v > 0 ? '+' : ''}${v}`;
+    return `${v > 0 ? '+' : ''}${v.toFixed(2)}`;
 }
 
 function esc(s) {
