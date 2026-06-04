@@ -36,7 +36,9 @@ export async function imdbRating({ imdbId, title, year } = {}) {
     if (!imdbId && !title) return { rating: null };
     try {
         const res = await fetchOMDb({ imdbId, title, year });
-        return res || { rating: null };
+        // OMDb names the field `imdbRating` ("8.5" or "N/A"); callers expect `rating`.
+        const r = res?.imdbRating;
+        return { rating: r && r !== 'N/A' ? r : null };
     } catch {
         return { rating: null };
     }

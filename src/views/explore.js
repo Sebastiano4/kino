@@ -307,7 +307,7 @@ function appendCards(grid, results) {
           <div class="poster-overlay">
             <div class="ov-title">${esc(r.title)}</div>
             <div class="ov-sub">
-              <span class="ov-imdb" hidden style="color:#F5C518;font:600 .64rem var(--fm)"></span><span class="ov-imdb-sep" hidden style="opacity:.3;margin:0 3px">·</span>${esc([gname, r.year].filter(Boolean).join(' · '))}
+              <span class="ov-imdb" hidden style="color:#F5C518;font:600 .64rem var(--font-mono)"></span><span class="ov-imdb-sep" hidden style="opacity:.3;margin:0 3px">·</span>${esc([gname, r.year].filter(Boolean).join(' · '))}
             </div>
             <div class="ov-actions">
               <button class="ov-btn primary" data-act="priority">🎯 ${esc(i18n.t('wl_tier_priority'))}</button>
