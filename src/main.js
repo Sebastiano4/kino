@@ -16,7 +16,6 @@ import * as router from './core/router.js';
 import { init as storeInit, destroy as storeDestroy } from './core/store.js';
 import { ThemeManager } from './core/theme.js';
 import { attachSwipeNav } from './core/gestures.js';
-import { openSettingsSheet } from './views/settings.js';
 import i18n from './core/i18n.js';
 
 // ── Theme — must init before first paint ──────────────────────────────────
@@ -77,8 +76,8 @@ document.getElementById('loginBtn').addEventListener('click', () => login());
 
 document.getElementById('homeBtn').addEventListener('click', () => router.navigate('home'));
 
-// Settings → bottom sheet (not router)
-document.getElementById('settingsBtn').addEventListener('click', () => openSettingsSheet());
+// Profile → full-page router view
+document.getElementById('settingsBtn').addEventListener('click', () => router.navigate('settings'));
 
 // ── Tab bar ───────────────────────────────────────────────────────────────
 function buildTabs() {
