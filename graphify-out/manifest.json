@@ -1,7 +1,7 @@
 {
   "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\firebase.json": {
-    "mtime": 1780341722.9554358,
-    "ast_hash": "4f4873761ee0e3214e23428ef11d0a9c",
+    "mtime": 1780616013.41495,
+    "ast_hash": "301d2cceb3f1813958369ea111bfa6cf",
     "semantic_hash": ""
   },
   "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\manifest.json": {
@@ -10,8 +10,8 @@
     "semantic_hash": ""
   },
   "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\sw.js": {
-    "mtime": 1780615621.2737796,
-    "ast_hash": "f38ff876a01169c225c25fcc1bbfabc8",
+    "mtime": 1780616021.5661948,
+    "ast_hash": "1ffaf89ff8d04d41cbc6f88172bae136",
     "semantic_hash": ""
   },
   "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\watch-and-deploy.ps1": {

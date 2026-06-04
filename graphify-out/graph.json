@@ -76,6 +76,15 @@
       "norm_label": "rewrites"
     },
     {
+      "label": "headers",
+      "file_type": "code",
+      "source_file": "firebase.json",
+      "source_location": "L12",
+      "id": "kino_firebase_hosting_headers",
+      "community": 14,
+      "norm_label": "headers"
+    },
+    {
       "label": "manifest.json",
       "file_type": "code",
       "source_file": "manifest.json",
@@ -513,7 +522,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L1",
       "id": "src_components_filters_js",
-      "community": 9,
+      "community": 2,
       "norm_label": "filters.js"
     },
     {
@@ -522,7 +531,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L27",
       "id": "components_filters_languages",
-      "community": 9,
+      "community": 2,
       "norm_label": "languages"
     },
     {
@@ -531,7 +540,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L38",
       "id": "components_filters_createfilterbar",
-      "community": 9,
+      "community": 2,
       "norm_label": "createfilterbar()"
     },
     {
@@ -540,7 +549,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L351",
       "id": "components_filters_todiscoverparams",
-      "community": 9,
+      "community": 2,
       "norm_label": "todiscoverparams()"
     },
     {
@@ -549,7 +558,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L372",
       "id": "components_filters_filtermovies",
-      "community": 9,
+      "community": 2,
       "norm_label": "filtermovies()"
     },
     {
@@ -558,7 +567,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L436",
       "id": "components_filters_searchmovies",
-      "community": 9,
+      "community": 2,
       "norm_label": "searchmovies()"
     },
     {
@@ -576,7 +585,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L486",
       "id": "components_filters_updatecount",
-      "community": 9,
+      "community": 2,
       "norm_label": "_updatecount()"
     },
     {
@@ -585,7 +594,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L504",
       "id": "components_filters_sortlabel",
-      "community": 9,
+      "community": 2,
       "norm_label": "_sortlabel()"
     },
     {
@@ -594,7 +603,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L522",
       "id": "components_filters_section",
-      "community": 9,
+      "community": 2,
       "norm_label": "_section()"
     },
     {
@@ -603,7 +612,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L526",
       "id": "components_filters_inlinesection",
-      "community": 9,
+      "community": 2,
       "norm_label": "_inlinesection()"
     },
     {
@@ -612,7 +621,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L530",
       "id": "components_filters_clearstate",
-      "community": 9,
+      "community": 2,
       "norm_label": "_clearstate()"
     },
     {
@@ -621,7 +630,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L537",
       "id": "components_filters_synccontrols",
-      "community": 9,
+      "community": 2,
       "norm_label": "_synccontrols()"
     },
     {
@@ -630,7 +639,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L561",
       "id": "components_filters_dualsliderhtml",
-      "community": 9,
+      "community": 2,
       "norm_label": "_dualsliderhtml()"
     },
     {
@@ -639,7 +648,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L571",
       "id": "components_filters_renderslider",
-      "community": 9,
+      "community": 2,
       "norm_label": "_renderslider()"
     },
     {
@@ -648,7 +657,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L592",
       "id": "components_filters_updatesummary",
-      "community": 9,
+      "community": 2,
       "norm_label": "_updatesummary()"
     },
     {
@@ -657,7 +666,7 @@
       "source_file": "src/components/filters.js",
       "source_location": "L607",
       "id": "components_filters_esc",
-      "community": 9,
+      "community": 2,
       "norm_label": "esc()"
     },
     {
@@ -702,7 +711,7 @@
       "source_file": "src/components/watched.js",
       "source_location": "L1",
       "id": "src_components_watched_js",
-      "community": 2,
+      "community": 6,
       "norm_label": "watched.js"
     },
     {
@@ -711,7 +720,7 @@
       "source_file": "src/components/watched.js",
       "source_location": "L15",
       "id": "components_watched_sentiment_emoji",
-      "community": 2,
+      "community": 6,
       "norm_label": "sentiment_emoji"
     },
     {
@@ -720,7 +729,7 @@
       "source_file": "src/components/watched.js",
       "source_location": "L16",
       "id": "components_watched_sentiment_color",
-      "community": 2,
+      "community": 6,
       "norm_label": "sentiment_color"
     },
     {
@@ -729,7 +738,7 @@
       "source_file": "src/components/watched.js",
       "source_location": "L18",
       "id": "components_watched_openwatchedmodal",
-      "community": 2,
+      "community": 6,
       "norm_label": "openwatchedmodal()"
     },
     {
@@ -738,7 +747,7 @@
       "source_file": "src/components/watched.js",
       "source_location": "L326",
       "id": "components_watched_flashbtn",
-      "community": 2,
+      "community": 6,
       "norm_label": "_flashbtn()"
     },
     {
@@ -747,7 +756,7 @@
       "source_file": "src/components/watched.js",
       "source_location": "L333",
       "id": "components_watched_capitalize",
-      "community": 2,
+      "community": 6,
       "norm_label": "_capitalize()"
     },
     {
@@ -756,7 +765,7 @@
       "source_file": "src/components/watched.js",
       "source_location": "L335",
       "id": "components_watched_esc",
-      "community": 2,
+      "community": 6,
       "norm_label": "esc()"
     },
     {
@@ -765,7 +774,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L1",
       "id": "src_components_wrapped_js",
-      "community": 20,
+      "community": 3,
       "norm_label": "wrapped.js"
     },
     {
@@ -774,7 +783,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L26",
       "id": "components_wrapped_openwrapped",
-      "community": 20,
+      "community": 3,
       "norm_label": "openwrapped()"
     },
     {
@@ -783,7 +792,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L81",
       "id": "components_wrapped_computestats",
-      "community": 20,
+      "community": 3,
       "norm_label": "_computestats()"
     },
     {
@@ -792,7 +801,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L109",
       "id": "components_wrapped_drawcard",
-      "community": 20,
+      "community": 3,
       "norm_label": "_drawcard()"
     },
     {
@@ -801,7 +810,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L229",
       "id": "components_wrapped_loadimg",
-      "community": 20,
+      "community": 3,
       "norm_label": "_loadimg()"
     },
     {
@@ -810,7 +819,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L239",
       "id": "components_wrapped_wraptext",
-      "community": 20,
+      "community": 3,
       "norm_label": "_wraptext()"
     },
     {
@@ -819,7 +828,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L254",
       "id": "components_wrapped_buildoverlay",
-      "community": 20,
+      "community": 3,
       "norm_label": "_buildoverlay()"
     },
     {
@@ -828,7 +837,7 @@
       "source_file": "src/components/wrapped.js",
       "source_location": "L276",
       "id": "components_wrapped_showerror",
-      "community": 20,
+      "community": 3,
       "norm_label": "_showerror()"
     },
     {
@@ -1233,7 +1242,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L1",
       "id": "src_core_i18n_js",
-      "community": 2,
+      "community": 6,
       "norm_label": "i18n.js"
     },
     {
@@ -1242,7 +1251,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L3",
       "id": "core_i18n_subs",
-      "community": 2,
+      "community": 6,
       "norm_label": "subs"
     },
     {
@@ -1251,7 +1260,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L5",
       "id": "core_i18n_dict",
-      "community": 2,
+      "community": 6,
       "norm_label": "dict"
     },
     {
@@ -1260,7 +1269,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L628",
       "id": "core_i18n_init",
-      "community": 2,
+      "community": 6,
       "norm_label": "init()"
     },
     {
@@ -1269,7 +1278,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L632",
       "id": "core_i18n_t",
-      "community": 2,
+      "community": 6,
       "norm_label": "t()"
     },
     {
@@ -1278,7 +1287,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L638",
       "id": "core_i18n_getlanguage",
-      "community": 2,
+      "community": 6,
       "norm_label": "getlanguage()"
     },
     {
@@ -1287,7 +1296,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L640",
       "id": "core_i18n_setlanguage",
-      "community": 2,
+      "community": 6,
       "norm_label": "setlanguage()"
     },
     {
@@ -1296,7 +1305,7 @@
       "source_file": "src/core/i18n.js",
       "source_location": "L650",
       "id": "core_i18n_subscribe",
-      "community": 2,
+      "community": 6,
       "norm_label": "subscribe()"
     },
     {
@@ -2277,7 +2286,7 @@
       "source_file": "src/services/tmdb.js",
       "source_location": "L64",
       "id": "services_tmdb_genrelist",
-      "community": 9,
+      "community": 0,
       "norm_label": "genrelist()"
     },
     {
@@ -2772,7 +2781,7 @@
       "source_file": "src/views/explore.js",
       "source_location": "L278",
       "id": "views_explore_normalize",
-      "community": 10,
+      "community": 0,
       "norm_label": "normalize()"
     },
     {
@@ -3177,7 +3186,7 @@
       "source_file": "src/views/vault.js",
       "source_location": "L588",
       "id": "views_vault_rendergeodetail",
-      "community": 0,
+      "community": 1,
       "norm_label": "_rendergeodetail()"
     },
     {
@@ -3850,6 +3859,16 @@
       "confidence_score": 1.0,
       "source": "kino_firebase_firestore",
       "target": "kino_firebase_firestore_rules"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "firebase.json",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "kino_firebase_hosting",
+      "target": "kino_firebase_hosting_headers",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12921,5 +12940,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "8e9256e35f83f180cf5d6e8147e18a2c5f54ca7e"
+  "built_at_commit": "cd706cb5c9d8c69173d5e062efcde3e3cef1d128"
 }
