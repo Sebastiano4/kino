@@ -75,8 +75,10 @@ export async function openDetail(movie, options = {}) {
             const rtEntry = (omdb?.Ratings || []).find(r => r.Source === 'Rotten Tomatoes');
             const rtScore = rtEntry ? rtEntry.Value : null; // e.g. "88%"
 
-            // Use imdb_id from TMDB external_ids for more reliable OMDb match
-            const imdbId = tmdb.external_ids?.imdb_id || omdb?.imdbID || null;
+            // Use imdb_id from TMDB external_ids for more reliable OMDb match.
+            // Fall back to any normalized/legacy id already on the movie.
+            const imdbId = tmdb.external_ids?.imdb_id || omdb?.imdbID
+                || d.imdbId || d.imdbID || d.imdb || null;
             let imdbRatingVal = omdb?.imdbRating || d.imdbRating || null;
             // If OMDb lookup by title/year failed, retry with imdbId
             if (!imdbRatingVal && imdbId) {
@@ -101,6 +103,7 @@ export async function openDetail(movie, options = {}) {
                 poster:           posterUrl(tmdb.poster_path) || d.poster,
                 backdropPath:     tmdb.backdrop_path || d.backdropPath || null,
                 popularity:       tmdb.popularity,
+                imdbId:           imdbId,
                 imdbRating:       imdbRatingVal,
                 imdbVotes:        omdb?.imdbVotes || d.imdbVotes,
                 rtScore:          rtScore || omdb?._rt || null,
@@ -270,10 +273,12 @@ function _enrichedPayload(d, isWatchlist) {
         title: d.title, plot: d.plot || '', poster: d.poster,
         year:  d.year || (d.releaseDate || '').slice(0, 4),
         tmdbId: d.tmdbId || d.id, isWatchlist, rating: null,
+        ...(isWatchlist ? { tier: 'standard' } : {}),
         director: d.director, cast: d.cast || [], genres: d.genres || [],
         genreIds: d.genreIds || [], runtime: d.runtime || null,
         originalLanguage: d.originalLanguage || '', countries: d.countries || [],
         releaseDate: d.releaseDate || '', imdbRating: d.imdbRating || null,
+        imdbId: d.imdbId || null,
         imdbVotes: d.imdbVotes || null, popularity: d.popularity || 0,
         backdropPath: d.backdropPath || null, isFavorite: false,
     };
@@ -301,19 +306,40 @@ function _renderModal(d, options = {}) {
 
     // ── Ratings bar ───────────────────────────────────────────────────────────
     const userRating = d.rating != null ? Number(d.rating).toFixed(1) : null;
-    const imdbVal    = d.imdbRating ? parseFloat(d.imdbRating) : null;
-    const vsWorld    = (userRating && imdbVal)
-        ? (parseFloat(userRating) - imdbVal).toFixed(1) : null;
+
+    // IMDb: use stored imdbRating; fall back to tmdbRating (always available
+    // from the TMDB fetch) when OMDb is unavailable, with a distinct badge.
+    const imdbVal    = d.imdbRating  ? parseFloat(d.imdbRating)  : null;
+    const tmdbVal    = d.tmdbRating  ? parseFloat(d.tmdbRating)  : null;
+    const displayVal = imdbVal ?? tmdbVal;           // prefer IMDb, show TMDB if not
+    const usingTmdb  = !imdbVal && tmdbVal != null;
+
+    const imdbHref  = d.imdbId ? `https://www.imdb.com/title/${esc(d.imdbId)}/` : null;
+    const imdbBadge = usingTmdb
+        ? `<span class="dm-tmdb-badge">TMDB</span>`
+        : imdbHref
+            ? `<a class="dm-imdb-badge dm-imdb-badge--link" href="${imdbHref}" target="_blank" rel="noopener noreferrer" title="View on IMDb">IMDb</a>`
+            : `<span class="dm-imdb-badge">IMDb</span>`;
+
+    // VS WORLD uses whichever score we're displaying so the comparison always works.
+    const vsBase  = imdbVal ?? tmdbVal;
+    const vsWorld = (userRating && vsBase != null)
+        ? (parseFloat(userRating) - vsBase).toFixed(1) : null;
     const vsSign  = vsWorld && parseFloat(vsWorld) > 0 ? '+' : '';
     const vsColor = vsWorld
         ? (parseFloat(vsWorld) > 0 ? 'var(--green)' : parseFloat(vsWorld) < 0 ? 'var(--red)' : 'var(--ink-dim)')
         : 'var(--ink-dim)';
-    const rtVal   = d.rtScore || null;
-    const rtNum   = rtVal ? parseInt(rtVal) : null;
+
+    // RT: show stored score when available; always make the label a search link.
+    const rtVal  = d.rtScore || null;
+    const rtNum  = rtVal ? parseInt(rtVal) : null;
     const rtColor = !rtNum      ? 'var(--ink-mute)'
                   : rtNum >= 75 ? '#E05050'
                   : rtNum >= 60 ? '#D4924A'
                   :               '#7A7A7A';
+    const rtQuery = encodeURIComponent((d.title || '') + (year ? ` ${year}` : ''));
+    const rtHref  = `https://www.rottentomatoes.com/search?search=${rtQuery}`;
+    const rtLabel = `<a class="dm-rt-badge" href="${rtHref}" target="_blank" rel="noopener noreferrer" title="Search on Rotten Tomatoes" style="color:${rtColor}">TOMATOMETER</a>`;
 
     // ── Action buttons ────────────────────────────────────────────────────────
     const trailerBtn = `<button class="dm-action-btn dm-action-primary" data-action="trailer" aria-label="${i18n.t('trailer')}">&#9654; ${i18n.t('trailer')}</button>`;
@@ -375,11 +401,11 @@ function _renderModal(d, options = {}) {
           <div class="dm-rating-val">${userRating ? `&#9733; ${userRating}` : '&mdash;'}</div>
         </div>
         <div class="dm-rating-col">
-          <div class="dm-rating-label"><span class="dm-imdb-badge">IMDb</span></div>
-          <div class="dm-rating-val">${imdbVal ? `${imdbVal.toFixed(1)} <span class="dm-rating-sub">/10</span>` : '&mdash;'}</div>
+          <div class="dm-rating-label">${imdbBadge}</div>
+          <div class="dm-rating-val">${displayVal != null ? `${displayVal.toFixed(1)} <span class="dm-rating-sub">/10</span>` : '&mdash;'}</div>
         </div>
         <div class="dm-rating-col">
-          <div class="dm-rating-label" style="color:${rtColor}">TOMATOMETER</div>
+          <div class="dm-rating-label">${rtLabel}</div>
           <div class="dm-rating-val"  style="color:${rtColor}">${rtVal || '&mdash;'}</div>
         </div>
         <div class="dm-rating-col">
@@ -407,7 +433,6 @@ function _renderModal(d, options = {}) {
       <div class="dm-details">
         ${_dmRow('DIRECTOR', d.director)}
         ${_dmRow('CAST',     (d.cast || []).join(', '))}
-        ${d.awards ? `<div class="dm-detail-row"><span class="dm-detail-label">AWARDS</span><span class="dm-detail-value" style="color:var(--gold-h)">${esc(d.awards)}</span></div>` : ''}
         ${_dmRow('COUNTRY',  (d.countries || []).join(', '))}
         ${_dmRow('LANGUAGE', lang)}
         ${d.watchedDate ? _dmRow('WATCHED', _fmtDate(d.watchedDate)) : ''}
