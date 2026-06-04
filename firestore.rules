@@ -24,10 +24,13 @@ service cloud.firestore {
                    && request.resource.data.keys().size() <= 20;
 
       // Movies sub-collection
+      // Cap is generous: an enriched film already carries ~30 fields
+      // (TMDB + OMDb + AI + Elo + geo + watchlist tier), so 40 was too
+      // tight — adding a single new key could silently fail the write.
       match /movies/{movieId} {
         allow read:  if isOwner(userId);
         allow write: if isOwner(userId)
-                     && request.resource.data.keys().size() <= 40;
+                     && request.resource.data.keys().size() <= 80;
       }
 
       // Match history sub-collection (Elo battles)

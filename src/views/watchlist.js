@@ -273,10 +273,18 @@ export const watchlist = {
             else commit();
         };
 
-        const moveFilm = (id, to) => {
+        const moveFilm = async (id, to) => {
             if (!TIERS.includes(to)) return;
+            const prev = (allMovies.find(x => x.id === id) || {}).tier;
             patchMovie(id, { tier: to });               // optimistic → re-renders via store
-            updateMovie(id, { tier: to }).catch(() => {});
+            try {
+                await updateMovie(id, { tier: to });    // persist (offline → queued by repo)
+            } catch (e) {
+                // Surface the real cause and undo the optimistic move so the UI
+                // never claims a change that didn't actually save.
+                console.warn('[watchlist] tier save failed:', e);
+                patchMovie(id, { tier: prev || 'standard' });
+            }
         };
 
         // ── Event delegation (single listener on the view root) ────────────────
