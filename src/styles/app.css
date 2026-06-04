@@ -2281,11 +2281,11 @@ textarea.filter-input {
 .ex-view .poster-card.ex-added { outline: 1px solid var(--gold-d); }
 
 /* ── ARCHIVE grid + cells ── */
-.ar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px 4px; padding: 4px var(--gutter) 80px; margin-top: 18px; }
-@media (min-width: 1400px) { .ar-grid { grid-template-columns: repeat(6, 1fr); } }
-@media (max-width: 900px)  { .ar-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 600px)  { .ar-grid { grid-template-columns: repeat(2, 1fr); } }
-.ar-view .ar-cell { display: flex; flex-direction: column; gap: 7px; }
+.ar-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 4px; padding: 4px var(--gutter) 80px; margin-top: 18px; }
+@media (min-width: 1400px) { .ar-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 900px)  { .ar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px)  { .ar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ar-view .ar-cell { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .ar-view .ar-card { position: relative; aspect-ratio: 2/3; overflow: hidden; border-radius: var(--r-md);
   cursor: pointer; background: var(--bg-2); border: 1px solid rgba(255,245,230,.04); }
 .ar-view .ar-card img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s var(--ease); }
