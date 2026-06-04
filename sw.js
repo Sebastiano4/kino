@@ -1,5 +1,5 @@
 /** KINO SW — network-first per codice, cache-first immagini, offline sync. */
-const CACHE = 'kino-v3';
+const CACHE = 'kino-v4';
 const PRECACHE = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {

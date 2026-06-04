@@ -740,8 +740,17 @@ textarea.filter-input {
   font-size: .7rem; color: var(--ink-mute);
 }
 .vault-geo-scale-bar {
-  width: 120px; height: 8px; border-radius: var(--r-pill);
+  position: relative;
+  width: 130px; height: 8px; border-radius: var(--r-pill);
   border: 1px solid var(--line);
+}
+.vault-geo-scale-mid {
+  position: absolute; left: 50%; bottom: 11px; transform: translateX(-50%);
+  font-size: .6rem; color: var(--ink-mute); line-height: 1; white-space: nowrap;
+}
+.vault-geo-scale-mid::after {
+  content: ''; position: absolute; left: 50%; top: 100%;
+  width: 1px; height: 4px; background: var(--line-h); transform: translateX(-50%);
 }
 .vault-geo-scale-na {
   display: inline-flex; align-items: center; gap: 5px;

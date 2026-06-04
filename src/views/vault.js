@@ -420,6 +420,16 @@ const HEAT_STOPS = [
 ];
 const HEAT_ZERO = 'rgb(46,49,56)'; // neutral — countries with no films
 
+// Non-linear (logarithmic) normalisation. The distribution is heavily skewed
+// — one country (e.g. USA) can hold 80%+ of all views — so a linear scale
+// paints that one country hot and crushes everyone else into the same cold
+// tone. log() compresses the outlier and expands the low/mid band, making
+// 30 vs 100 vs 250 films clearly distinct.
+function _scaleT(count, maxCount) {
+    if (maxCount <= 1) return 1;
+    return Math.log(count) / Math.log(maxCount); // count=1 → 0, count=max → 1
+}
+
 function _heatColor(t) {
     const c = Math.max(0, Math.min(1, t));
     for (let i = 1; i < HEAT_STOPS.length; i++) {
@@ -492,7 +502,7 @@ async function _paintWorldMap(container, movies) {
         const iso   = f.properties.iso2;
         const rec   = iso ? agg.get(iso) : null;
         const count = rec ? rec.count : 0;
-        const fill  = count > 0 && maxCount > 0 ? _heatColor(count / maxCount) : HEAT_ZERO;
+        const fill  = count > 0 ? _heatColor(_scaleT(count, maxCount)) : HEAT_ZERO;
         const avg   = rec && rec.avg != null ? rec.avg.toFixed(1) : '';
         return `<path d="${d}" fill="${fill}" class="vault-geo-country${rec ? ' has-data' : ''}"`
              + ` data-iso="${esc(iso || '')}" data-name="${esc(rec ? rec.name : f.properties.name)}"`
@@ -514,7 +524,10 @@ async function _paintWorldMap(container, movies) {
         <span class="vault-geo-legend-label mono">${counted.length} ${counted.length === 1 ? 'country' : 'countries'} · ${totalFilms} films</span>
         <span class="vault-geo-scale">
           <span class="vault-geo-scale-min mono">1</span>
-          <span class="vault-geo-scale-bar"></span>
+          <span class="vault-geo-scale-bar">${(() => {
+            const mid = Math.round(Math.sqrt(maxCount));
+            return maxCount > 3 && mid > 1 && mid < maxCount ? `<span class="vault-geo-scale-mid mono">${mid}</span>` : '';
+          })()}</span>
           <span class="vault-geo-scale-max mono">${maxCount}</span>
           <span class="vault-geo-scale-na"><i></i>${i18n.t('vault_geo_no_data')}</span>
         </span>

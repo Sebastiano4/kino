@@ -1,25 +1,32 @@
 /**
- * GEO ENRICH — backfill production countries for films that lack them.
+ * GEO ENRICH — recover the production countries of films that lack them.
  *
  * Most films are added from Explore with only `originalLanguage`; the real
  * `production_countries` are written only when a film is opened in the detail
- * modal. The world map therefore starts empty. We recover the *actual*
- * production countries from OMDb's `Country` field (a comma-separated list of
- * real producing nations — never inferred from language), which is fetched
- * directly and reliably, unlike the TMDB proxy.
+ * modal, so the world map starts sparse. We resolve countries from the most
+ * authoritative source available, in order:
  *
- * Results are cached in localStorage (so we never re-query a film) and, when
- * found, persisted back to Firestore so every view benefits permanently.
+ *   1. TMDB  movieDetails(tmdbId).production_countries  — the same curated data
+ *      the detail modal uses. `origin_country` gives the true primary country.
+ *   2. OMDb  by imdbId  — exact, reliable.
+ *   3. OMDb  by title   — last resort, with a ±3y tolerance so an ambiguous
+ *      title cannot silently attach the wrong film's country.
+ *
+ * Crucially we NEVER infer a country from language (French ≠ France) and never
+ * overwrite good data with an empty result. Hits are cached in localStorage
+ * and persisted to Firestore (countries + originCountry) so every view benefits.
  *
  *   mergeCachedCountries(films) → films with cached countries merged in (sync)
  *   backfillCountries(films)    → Promise<films> after one network pass
  */
 
 import { imdbFull } from './omdb.js';
+import { movieDetails } from './tmdb.js';
 import { updateMovie } from '../data/repo.js';
+import { isoToCountry } from '../core/countries.js';
 
-const LS_KEY = 'kino-film-countries-v1';
-let _cache = null;                 // { key: string[] }  ([] = looked up, none found)
+const LS_KEY = 'kino-film-countries-v3';
+let _cache = null;                 // { key: { c:string[], o:string|null } }
 const _attempted = new Set();      // keys tried this session (avoid re-queue)
 const _inflight  = new Map();      // key → Promise (dedupe concurrent lookups)
 
@@ -39,40 +46,91 @@ function _persist() {
 }
 
 function _keyOf(m) {
-    return m.imdbId || `${String(m.title || '').toLowerCase()}|${m.year || ''}`;
+    return m.tmdbId ? `t${m.tmdbId}`
+         : m.imdbId ? m.imdbId
+         : `${String(m.title || '').toLowerCase()}|${m.year || ''}`;
 }
 
-/** Merge any cached countries into films missing them. Pure & synchronous. */
+function _omdbCountries(d) {
+    return (d && typeof d.Country === 'string' && d.Country !== 'N/A')
+        ? d.Country.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+}
+
+// Reject an OMDb hit whose year is far from ours — guards against a generic
+// title resolving to the wrong film. A small drift (festival vs wide release)
+// is tolerated so genuine matches like City of God (2002 vs 2004) still pass.
+function _omdbYearOk(d, year) {
+    if (!d) return false;
+    const dy = parseInt(String(d.Year || '').slice(0, 4), 10);
+    const my = parseInt(year, 10);
+    if (!dy) return false;
+    if (!my) return true;
+    return Math.abs(dy - my) <= 3;
+}
+
+/** Merge any cached countries/origin into films missing them. Pure & sync. */
 export function mergeCachedCountries(films) {
-    const c = _load();
+    const cache = _load();
     return (films || []).map(m => {
         if (m.countries && m.countries.length) return m;
-        const got = c[_keyOf(m)];
-        return got && got.length ? { ...m, countries: got } : m;
+        const got = cache[_keyOf(m)];
+        if (got && got.c && got.c.length) {
+            return { ...m, countries: got.c, originCountry: m.originCountry || got.o || undefined };
+        }
+        return m;
     });
 }
 
 async function _resolveOne(m) {
-    const c = _load();
+    const cache = _load();
     const k = _keyOf(m);
-    if (c[k] !== undefined) return c[k];
+    if (cache[k] !== undefined) return cache[k];
     if (_inflight.has(k)) return _inflight.get(k);
 
     const p = (async () => {
-        let names = [];
-        try {
-            const data = await imdbFull({ imdbId: m.imdbId, title: m.title, year: m.year });
-            if (data && typeof data.Country === 'string' && data.Country !== 'N/A') {
-                names = data.Country.split(',').map(s => s.trim()).filter(Boolean);
-            }
-        } catch {}
-        c[k] = names;
-        _persist();
-        // Persist real countries back to Firestore (skip offline placeholder ids).
-        if (names.length && m.id && !String(m.id).startsWith('offline-')) {
-            updateMovie(m.id, { countries: names }).catch(() => {});
+        let result = null; // { countries:string[], origin:string|null }
+
+        // 1. TMDB — authoritative production_countries (+ origin_country).
+        if (m.tmdbId) {
+            try {
+                const d = await movieDetails(m.tmdbId);
+                const names = (d?.production_countries || []).map(c => c.name).filter(Boolean);
+                if (names.length) {
+                    const oc = Array.isArray(d.origin_country) ? d.origin_country[0] : null;
+                    const origin = (oc && isoToCountry(oc)?.name) || names[0];
+                    result = { countries: names, origin };
+                }
+            } catch {}
         }
-        return names;
+        // 2. OMDb by imdbId.
+        if (!result && m.imdbId) {
+            try {
+                const names = _omdbCountries(await imdbFull({ imdbId: m.imdbId }));
+                if (names.length) result = { countries: names, origin: names[0] };
+            } catch {}
+        }
+        // 3. OMDb by title (retry without year; reject far-off year matches).
+        if (!result && m.title) {
+            try {
+                let d = await imdbFull({ title: m.title, year: m.year });
+                if (!_omdbYearOk(d, m.year)) d = await imdbFull({ title: m.title });
+                if (_omdbYearOk(d, m.year)) {
+                    const names = _omdbCountries(d);
+                    if (names.length) result = { countries: names, origin: names[0] };
+                }
+            } catch {}
+        }
+
+        const stored = result || { countries: [], origin: null };
+        cache[k] = { c: stored.countries, o: stored.origin };
+        _persist();
+        if (stored.countries.length && m.id && !String(m.id).startsWith('offline-')) {
+            const patch = { countries: stored.countries };
+            if (stored.origin) patch.originCountry = stored.origin;
+            updateMovie(m.id, patch).catch(() => {});
+        }
+        return cache[k];
     })().finally(() => _inflight.delete(k));
 
     _inflight.set(k, p);
@@ -92,13 +150,13 @@ async function _pool(items, size, fn) {
  * @returns {Promise<Array>} films with countries merged in
  */
 export async function backfillCountries(films) {
-    const c = _load();
+    const cache = _load();
     const todo = (films || []).filter(m => {
         if (m.countries && m.countries.length) return false;
         const k = _keyOf(m);
-        if (c[k] !== undefined) return false;
+        if (cache[k] !== undefined) return false;
         if (_attempted.has(k)) return false;
-        return !!(m.imdbId || m.title);
+        return !!(m.tmdbId || m.imdbId || m.title);
     });
     todo.forEach(m => _attempted.add(_keyOf(m)));
     if (todo.length) await _pool(todo, 4, _resolveOne);
