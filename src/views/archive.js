@@ -178,7 +178,7 @@ export const archive = {
             if (actEl && actEl.dataset.act === 'remove') {
                 e.stopPropagation();
                 cell.classList.add('card-out');
-                setTimeout(() => { removeMovie(id); deleteMovie(id).catch(() => {}); }, 220);
+                deleteMovie(id).then(() => removeMovie(id)).catch(() => cell.classList.remove('card-out'));
                 return;
             }
             // Edit / Note / card body → detail modal

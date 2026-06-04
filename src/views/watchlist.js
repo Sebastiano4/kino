@@ -23,6 +23,7 @@ import i18n from '../core/i18n.js';
 import { openDetail } from '../components/detail.js';
 import { openWatchedModal } from '../components/watched.js';
 import { showToast } from '../components/toast.js';
+import { movieDetails } from '../services/tmdb.js';
 
 // ── Tier model ───────────────────────────────────────────────────────────────
 const TIERS = ['priority', 'standard', 'backlog'];
@@ -267,11 +268,18 @@ export const watchlist = {
             });
         };
 
-        const removeFilm = id => {
+        const removeFilm = async id => {
             const node = el.querySelector(`[data-card-root="${cssEsc(id)}"]`);
-            const commit = () => { removeMovie(id); deleteMovie(id).catch(() => {}); };
-            if (node) { node.classList.add('card-out'); setTimeout(commit, 240); }
-            else commit();
+            if (node) node.classList.add('card-out');
+            try {
+                await deleteMovie(id);     // confirm server-side before dropping it
+                removeMovie(id);
+            } catch (e) {
+                if (node) node.classList.remove('card-out');
+                const msg = e?.code || e?.message || String(e);
+                console.warn('[watchlist] remove failed:', e);
+                showToast(`${i18n.t('error')}: ${msg}`, { tone: 'error', timeout: 8000 });
+            }
         };
 
         const moveFilm = async (id, to) => {
@@ -362,16 +370,48 @@ export const watchlist = {
         $('#wlBtnGrid').addEventListener('click', () => setView('grid'));
         $('#wlBtnList').addEventListener('click', () => setView('list'));
 
+        // ── Runtime backfill ───────────────────────────────────────────────────
+        // Most watchlist films are added without a runtime (imported / quick-add),
+        // so the "total runtime" reads 0. Fetch the missing runtimes once from
+        // TMDB, update the total live, and persist so it sticks.
+        const self = this;
+        const rtTried = new Set();
+        const backfillRuntimes = async () => {
+            const todo = allMovies.filter(m =>
+                !m.runtime && m.tmdbId && !rtTried.has(m.tmdbId) && !String(m.id || '').startsWith('offline-'));
+            if (!todo.length) return;
+            todo.forEach(m => rtTried.add(m.tmdbId));
+            const q = todo.slice();
+            const worker = async () => {
+                while (q.length && self._alive) {
+                    const m = q.shift();
+                    try {
+                        const d = await movieDetails(m.tmdbId);
+                        if (d?.runtime) {
+                            m.runtime = d.runtime;          // local copy → total updates
+                            renderMeta();
+                            updateMovie(m.id, { runtime: d.runtime }).catch(() => {});
+                        }
+                    } catch {}
+                }
+            };
+            await Promise.all(Array.from({ length: 3 }, worker));
+        };
+
         // ── Boot ───────────────────────────────────────────────────────────────
+        this._alive = true;
         await init();
+        let firstLoad = true;
         this._unsub = subscribe('watchlist', ({ movies }) => {
             allMovies = (movies || []).filter(m => m.isWatchlist);
             if (tonightIdx >= byTier('priority').length) tonightIdx = 0;
             renderAll();
+            if (firstLoad) { firstLoad = false; backfillRuntimes(); }
         });
     },
 
     unmount() {
+        this._alive = false;
         if (this._unsub)    { this._unsub(); this._unsub = null; }
         if (this._docClick) { document.removeEventListener('click', this._docClick); this._docClick = null; }
     },

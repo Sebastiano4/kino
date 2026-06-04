@@ -28,9 +28,13 @@ service cloud.firestore {
       // (TMDB + OMDb + AI + Elo + geo + watchlist tier), so 40 was too
       // tight — adding a single new key could silently fail the write.
       match /movies/{movieId} {
-        allow read:  if isOwner(userId);
-        allow write: if isOwner(userId)
-                     && request.resource.data.keys().size() <= 80;
+        allow read:   if isOwner(userId);
+        // create/update validate payload size. Keep delete separate: on a
+        // delete there is no request.resource, so a size check there would
+        // throw and silently deny the delete.
+        allow create, update: if isOwner(userId)
+                              && request.resource.data.keys().size() <= 80;
+        allow delete: if isOwner(userId);
       }
 
       // Match history sub-collection (Elo battles)
