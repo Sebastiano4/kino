@@ -70,6 +70,17 @@
   --red:    #B8523A;
   --green:  #5E8C65;
   --amber:  #D4714A;
+  --teal:   #5E9C8A;
+  --indigo: #7E8BC8;
+
+  /* badge tiers — percentile-based, warm-to-cool gradient */
+  --badge-goat:        #E8C77A;  /* saturated warm gold — top 1%   */
+  --badge-legendary:   #D4B896;  /* gold warm           — top 1–5% */
+  --badge-masterpiece: #7EC8C0;  /* teal                — top 5–15%  */
+  --badge-elite:       #7E8BC8;  /* indigo              — top 15–30% */
+  --badge-great:       #9CB87E;  /* sage green          — top 30–50% */
+  --badge-average:     #9A8A7A;  /* warm grey           — top 50–75% */
+  --badge-rookie:      #6A6258;  /* muted brown-grey    — bottom 25% */
 
   /* forma */
   --r-sm: 6px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;

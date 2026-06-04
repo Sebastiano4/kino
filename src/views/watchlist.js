@@ -30,7 +30,7 @@ const TIERS = ['priority', 'standard', 'backlog'];
 const TIER_CFG = {
     priority: { labelKey: 'wl_tier_priority', hintKey: 'wl_tier_priority_hint', dot: 'var(--gold)' },
     standard: { labelKey: 'wl_tier_standard', hintKey: 'wl_tier_standard_hint', dot: '#998f83' },
-    backlog:  { labelKey: 'wl_tier_backlog',  hintKey: 'wl_tier_backlog_hint',  dot: '#5c554d' },
+    backlog:  { labelKey: 'wl_tier_backlog',  hintKey: 'wl_tier_backlog_hint',  dot: '#8a8078' },
 };
 const tierOf      = m => (TIERS.includes(m.tier) ? m.tier : 'standard');
 const tierLabel   = t => i18n.t(TIER_CFG[t].labelKey);
@@ -208,9 +208,14 @@ export const watchlist = {
                 if (!films.length) return;
                 if (tierFilter === 'all') {
                     const rt = films.reduce((s, m) => s + (m.runtime || 0), 0);
-                    html += `<div class="grid-section-label">
-                        <span class="gsl-dot" style="background:${TIER_CFG[t].dot}"></span>
-                        <span class="gsl-text">${tierLabel(t)}</span>
+                    const c  = TIER_CFG[t].dot;
+                    html += `<div class="grid-section-label" style="
+                        border-left-color:${c};
+                        border-top-color:color-mix(in srgb, ${c} 12%, transparent);
+                        border-right-color:color-mix(in srgb, ${c} 8%, transparent);
+                        border-bottom-color:color-mix(in srgb, ${c} 8%, transparent);">
+                        <span class="gsl-dot" style="background:${c}"></span>
+                        <span class="gsl-text" style="color:${c}">${tierLabel(t)}</span>
                         <span class="gsl-count">${films.length} ${i18n.t('wl_films')} · ${fmtRt(rt)}</span>
                       </div>`;
                 }

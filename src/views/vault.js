@@ -1,10 +1,9 @@
 /**
- * VAULT — analytics, Elo ranking, people.
+ * VAULT — analytics, people.
  *
  * Tabs:
  *   Collection — badge-tiered, searchable grid of rated films.
  *   Overview   — KPI tiles, genre breakdown, decade distribution, world map.
- *   Rankings   — Elo leaderboard.
  *   People     — directors (min 3 films, by avg rating) & actors (by films
  *                seen, then avg), each with a Wikipedia portrait.
  *
@@ -14,7 +13,7 @@
 import { init, subscribe } from '../core/store.js';
 import { getMatches, updateMovie } from '../data/repo.js';
 import i18n from '../core/i18n.js';
-import { tierOf, seedElo } from '../core/elo.js';
+import { seedElo } from '../core/elo.js';
 import { computeBadgeBreakpoints, getBadge, tallyBadges, BADGE_TIERS } from '../core/badges.js';
 import { aggregateByISO } from '../core/countries.js';
 import { backfillCountries, mergeCachedCountries } from '../services/geoEnrich.js';
@@ -33,7 +32,6 @@ export const vault = {
             <div class="vault-tabs" id="vaultTabs">
               <button class="vault-tab active" data-tab="collection">${i18n.t('vault_collection')}</button>
               <button class="vault-tab" data-tab="overview">Overview</button>
-              <button class="vault-tab" data-tab="rankings">Rankings</button>
               <button class="vault-tab" data-tab="directors">People</button>
             </div>
             <div id="vaultBody">
@@ -61,7 +59,6 @@ export const vault = {
                 render();
             });
             if (tab === 'overview')  _renderOverview(body, rated, wl, matches);
-            if (tab === 'rankings')  _renderRankings(body, rated, matches);
             if (tab === 'directors') _renderPeople(body, rated, peopleMode, next => {
                 if (next.peopleMode) peopleMode = next.peopleMode;
                 render();
@@ -630,26 +627,6 @@ function _renderGeoDetail(panel, rec) {
 
     draw();
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// ── Rankings ───────────────────────────────────────────────────────────────
-
-function _renderRankings(body, rated, matches) {
-    const ranking = [...rated].sort((a, b) => seedElo(b) - seedElo(a)).slice(0, 30);
-
-    body.innerHTML = `
-      <div class="vault-section">
-        <h3 class="vault-section-title">Elo Ranking</h3>
-        ${ranking.length ? `<div class="vault-ranking">
-          ${ranking.map((m, i) => `
-            <div class="vault-rank-row">
-              <span class="vault-rank-pos mono">${i+1}</span>
-              <span class="vault-rank-title serif">${esc(m.title)}</span>
-              <span class="vault-rank-tier">${tierOf(seedElo(m)).label}</span>
-              <span class="vault-rank-elo mono">${seedElo(m)}</span>
-            </div>`).join('')}
-        </div>` : `<div class="vault-empty">${i18n.t('vault_no_rated')}</div>`}
-      </div>`;
 }
 
 // ── Directors ──────────────────────────────────────────────────────────────

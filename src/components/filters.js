@@ -89,52 +89,50 @@ export async function createFilterBar(container, config = {}) {
     html += _section(i18n.t('genre'), `<div class="filter-pills" data-filter="genre">
       ${cachedGenres.map(g => `<button class="filter-pill" data-id="${g.id}">${esc(g.name)}</button>`).join('')}</div>`);
   }
-  if (filters.includes('year')) {
-    html += _section(i18n.t('year'), `<div class="filter-row">
-      <input class="filter-input" data-filter="yearMin" type="number" placeholder="${i18n.t('from_label')}" min="1900" max="2030">
-      <input class="filter-input" data-filter="yearMax" type="number" placeholder="${i18n.t('to_label')}"  min="1900" max="2030"></div>`);
+  // ── Year + Rating sliders, side by side ─────────────────────────────────
+  const showYear   = filters.includes('year');
+  const showRating = filters.includes('rating');
+  if (showYear || showRating) {
+    const yMax = new Date().getFullYear();
+    html += `<div class="filter-grid-2">
+      ${showYear   ? _section(i18n.t('year'),   _dualSliderHTML('year',   1900, yMax, 1)) : ''}
+      ${showRating ? _section(i18n.t('rating'), _dualSliderHTML('rating', 1,    10,   0.5)) : ''}
+    </div>`;
   }
-  if (filters.includes('rating')) {
-    html += _section(i18n.t('rating'), `<div class="filter-row">
-      <input class="filter-input" data-filter="ratingMin" type="number" placeholder="Min" min="0" max="10" step="0.1">
-      <input class="filter-input" data-filter="ratingMax" type="number" placeholder="Max" min="0" max="10" step="0.1"></div>`);
+
+  // ── Text inputs: country / director / cast on one wrap-row ──────────────
+  const txt = [];
+  if (filters.includes('country'))  txt.push(['country',  i18n.t('country_example')]);
+  if (filters.includes('director')) txt.push(['director', i18n.t('director_placeholder')]);
+  if (filters.includes('cast'))     txt.push(['cast',     i18n.t('cast_placeholder')]);
+  if (txt.length) {
+    html += `<div class="filter-grid-inputs">${
+      txt.map(([k, ph]) => `<label class="filter-inline-field">
+        <span class="filter-section-label">${i18n.t(k)}</span>
+        <input class="filter-input" data-filter="${k}" type="text" placeholder="${esc(ph)}">
+      </label>`).join('')
+    }</div>`;
   }
-  if (filters.includes('runtime')) {
-    html += _section(i18n.t('runtime'), `<div class="filter-pills" data-filter="runtime">
-      <button class="filter-pill" data-value="short">&lt; 90 min</button>
-      <button class="filter-pill" data-value="medium">90–150 min</button>
-      <button class="filter-pill" data-value="long">&gt; 150 min</button></div>`);
-  }
-  if (filters.includes('language')) {
-    html += _section(i18n.t('languageLabel'), `<select class="filter-select" data-filter="language">
-      <option value="">${i18n.t('all_label')}</option>
-      ${LANGUAGES.map(l => `<option value="${l.code}">${l.name}</option>`).join('')}</select>`);
-  }
-  if (filters.includes('country')) {
-    html += _section(i18n.t('country'), `<input class="filter-input" data-filter="country" type="text" placeholder="${i18n.t('country_example')}" style="max-width:280px">`);
-  }
-  if (filters.includes('director')) {
-    html += _section(i18n.t('director'), `<input class="filter-input" data-filter="director" type="text" placeholder="${i18n.t('director_placeholder')}" style="max-width:280px">`);
-  }
-  if (filters.includes('cast')) {
-    html += _section(i18n.t('cast'), `<input class="filter-input" data-filter="cast" type="text" placeholder="${i18n.t('cast_placeholder')}" style="max-width:280px">`);
-  }
+
+  // ── Compact pill rows: status / favorite / added ────────────────────────
+  const pillRows = [];
   if (filters.includes('status')) {
-    html += _section(i18n.t('status'), `<div class="filter-pills" data-filter="status">
+    pillRows.push(_inlineSection(i18n.t('status'), `<div class="filter-pills" data-filter="status">
       <button class="filter-pill" data-value="watched">${i18n.t('status_watched')}</button>
-      <button class="filter-pill" data-value="watchlist">${i18n.t('status_watchlist')}</button></div>`);
+      <button class="filter-pill" data-value="watchlist">${i18n.t('status_watchlist')}</button></div>`));
   }
   if (filters.includes('favorite')) {
-    html += _section(i18n.t('favorites'), `<div class="filter-pills" data-filter="favorite">
-      <button class="filter-pill" data-value="true">${i18n.t('only_favorites')}</button></div>`);
+    pillRows.push(_inlineSection(i18n.t('favorites'), `<div class="filter-pills" data-filter="favorite">
+      <button class="filter-pill" data-value="true">${i18n.t('only_favorites')}</button></div>`));
   }
   if (filters.includes('addedDate')) {
-    html += _section(i18n.t('added'), `<div class="filter-pills" data-filter="addedRange">
+    pillRows.push(_inlineSection(i18n.t('added'), `<div class="filter-pills" data-filter="addedRange">
       <button class="filter-pill" data-value="week">${i18n.t('last_week')}</button>
       <button class="filter-pill" data-value="month">${i18n.t('last_month')}</button>
       <button class="filter-pill" data-value="3months">${i18n.t('last_3_months')}</button>
-      <button class="filter-pill" data-value="year">${i18n.t('last_year')}</button></div>`);
+      <button class="filter-pill" data-value="year">${i18n.t('last_year')}</button></div>`));
   }
+  if (pillRows.length) html += `<div class="filter-pill-rows">${pillRows.join('')}</div>`;
   html += `<button class="filter-clear" data-action="clear">${i18n.t('clearFilters')}</button>`;
   panel.innerHTML = html;
 
@@ -244,7 +242,7 @@ export async function createFilterBar(container, config = {}) {
   });
 
   // ── Text / number inputs (debounced) ────────────────────────────────────────
-  ['yearMin','yearMax','ratingMin','ratingMax','director','cast','country'].forEach(key => {
+  ['director','cast','country'].forEach(key => {
     const input = panel.querySelector(`[data-filter="${key}"]`);
     if (input) {
       input.addEventListener('input', () => {
@@ -253,6 +251,38 @@ export async function createFilterBar(container, config = {}) {
         debounce = setTimeout(() => { _updateCount(toggleBtn, state); _updateSummary(summary, state); emit(); }, 300);
       }, sig);
     }
+  });
+
+  // ── Dual-handle range sliders (year, rating) ────────────────────────────────
+  panel.querySelectorAll('.dual-slider').forEach(slider => {
+    const key       = slider.dataset.key;
+    const aMin      = Number(slider.dataset.min);
+    const aMax      = Number(slider.dataset.max);
+    const stepN     = Number(slider.dataset.step);
+    const minInput  = slider.querySelector('[data-handle="min"]');
+    const maxInput  = slider.querySelector('[data-handle="max"]');
+    const stateKeys = key === 'year'
+      ? ['yearMin', 'yearMax']
+      : ['ratingMin', 'ratingMax'];
+
+    // Seed handle positions from current state
+    const initLo = state[stateKeys[0]] !== '' ? Number(state[stateKeys[0]]) : aMin;
+    const initHi = state[stateKeys[1]] !== '' ? Number(state[stateKeys[1]]) : aMax;
+    minInput.value = initLo; maxInput.value = initHi;
+    _renderSlider(slider, key);
+
+    const onSlide = which => {
+      let lo = Number(minInput.value), hi = Number(maxInput.value);
+      if (which === 'min' && lo > hi) { lo = hi; minInput.value = lo; }
+      if (which === 'max' && hi < lo) { hi = lo; maxInput.value = hi; }
+      state[stateKeys[0]] = lo > aMin ? String(lo) : '';
+      state[stateKeys[1]] = hi < aMax ? String(hi) : '';
+      _renderSlider(slider, key);
+      clearTimeout(debounce);
+      debounce = setTimeout(() => { _updateCount(toggleBtn, state); _updateSummary(summary, state); emit(); }, 150);
+    };
+    minInput.addEventListener('input', () => onSlide('min'), sig);
+    maxInput.addEventListener('input', () => onSlide('max'), sig);
   });
 
   // ── Language select ──────────────────────────────────────────────────────────
@@ -493,6 +523,10 @@ function _section(label, content) {
   return `<div class="filter-section"><div class="filter-section-label">${label}</div>${content}</div>`;
 }
 
+function _inlineSection(label, content) {
+  return `<div class="filter-section filter-section-inline"><div class="filter-section-label">${label}</div>${content}</div>`;
+}
+
 function _clearState(state) {
   state.genre = []; state.yearMin = ''; state.yearMax = '';
   state.ratingMin = ''; state.ratingMax = ''; state.runtime = '';
@@ -511,6 +545,48 @@ function _syncControls(panel, state) {
   panel.querySelectorAll('[data-filter="favorite"] .filter-pill').forEach(p => p.classList.toggle('active', state.favorite));
   panel.querySelectorAll('.filter-input').forEach(i => { i.value = state[i.dataset.filter] || ''; });
   panel.querySelectorAll('.filter-select').forEach(s => { if (s.dataset.filter) s.value = state[s.dataset.filter] || ''; });
+  panel.querySelectorAll('.dual-slider').forEach(slider => {
+    const key  = slider.dataset.key;
+    const aMin = Number(slider.dataset.min);
+    const aMax = Number(slider.dataset.max);
+    const keys = key === 'year' ? ['yearMin', 'yearMax'] : ['ratingMin', 'ratingMax'];
+    const lo = state[keys[0]] !== '' ? Number(state[keys[0]]) : aMin;
+    const hi = state[keys[1]] !== '' ? Number(state[keys[1]]) : aMax;
+    slider.querySelector('[data-handle="min"]').value = lo;
+    slider.querySelector('[data-handle="max"]').value = hi;
+    _renderSlider(slider, key);
+  });
+}
+
+function _dualSliderHTML(key, min, max, step) {
+  return `<div class="dual-slider" data-key="${key}" data-min="${min}" data-max="${max}" data-step="${step}">
+    <div class="dual-slider-track"><div class="dual-slider-fill"></div></div>
+    <input type="range" class="dual-slider-input" data-handle="min" min="${min}" max="${max}" step="${step}" value="${min}">
+    <input type="range" class="dual-slider-input" data-handle="max" min="${min}" max="${max}" step="${step}" value="${max}">
+    <span class="dual-slider-label" data-label="min"></span>
+    <span class="dual-slider-label" data-label="max"></span>
+  </div>`;
+}
+
+function _renderSlider(slider, key) {
+  const aMin = Number(slider.dataset.min);
+  const aMax = Number(slider.dataset.max);
+  const lo   = Number(slider.querySelector('[data-handle="min"]').value);
+  const hi   = Number(slider.querySelector('[data-handle="max"]').value);
+  const fmt  = key === 'rating'
+    ? v => '★ ' + Number(v).toFixed(1)
+    : v => String(Math.round(v));
+  const pctL = ((lo - aMin) / (aMax - aMin)) * 100;
+  const pctR = ((hi - aMin) / (aMax - aMin)) * 100;
+  const fill = slider.querySelector('.dual-slider-fill');
+  fill.style.left  = pctL + '%';
+  fill.style.width = Math.max(0, pctR - pctL) + '%';
+  const lblLo = slider.querySelector('[data-label="min"]');
+  const lblHi = slider.querySelector('[data-label="max"]');
+  lblLo.textContent = fmt(lo);
+  lblHi.textContent = fmt(hi);
+  lblLo.style.left = pctL + '%';
+  lblHi.style.left = pctR + '%';
 }
 
 function _updateSummary(summary, state) {

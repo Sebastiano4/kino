@@ -22,7 +22,7 @@ const RATING_ROW = [
 const DECADE_ROW = [
     { id: 'any', label: 'ex_any' },
     { id: '2020', label: '2020s' }, { id: '2010', label: '2010s' },
-    { id: '2000', label: '2000s' }, { id: '1990', label: '90s' }, { id: 'classic', label: 'ex_classic' },
+    { id: '2000', label: '2000s' }, { id: '1990', label: '90s' }, { id: '1980', label: '80s' }, { id: 'classic', label: 'ex_classic' },
 ];
 const SORT_ROW = [
     { id: 'rating', label: 'ex_sort_rating' },
@@ -38,6 +38,12 @@ const GCOL = {
     Mystery: '#9648C8', Fantasy: '#6E9CA0', Adventure: '#A08C6E',
 };
 const genreColor = n => GCOL[n] || '#998f83';
+// Films may store `genres` as an array, a comma-joined string, or be missing it.
+const genresOf = m => Array.isArray(m.genres)
+    ? m.genres
+    : (typeof m.genres === 'string' && m.genres
+        ? m.genres.split(',').map(s => s.trim()).filter(Boolean)
+        : []);
 const lbl = key => (/^[a-z_]+$/.test(key) && i18n.t(key) !== key ? i18n.t(key) : key);
 
 export const archive = {
@@ -97,7 +103,7 @@ export const archive = {
             if (q) list = list.filter(m => `${m.title || ''} ${m.director || ''}`.toLowerCase().includes(q));
             if (rating !== 'all') list = list.filter(m => matchRating(m.rating, rating));
             if (decade !== 'any') list = list.filter(m => matchDecade(filmYear(m), decade));
-            if (genre !== 'all')  list = list.filter(m => (m.genres || []).some(g => String(g) === genre));
+            if (genre !== 'all')  list = list.filter(m => genresOf(m).some(g => String(g) === genre));
             return sortFilms(list, sort);
         };
 
@@ -114,7 +120,7 @@ export const archive = {
         const refreshGenreChips = () => {
             const row = el.querySelector('#arGenreRow');
             const counts = new Map();
-            all.forEach(m => (m.genres || []).forEach(g => counts.set(String(g), (counts.get(String(g)) || 0) + 1)));
+            all.forEach(m => genresOf(m).forEach(g => counts.set(String(g), (counts.get(String(g)) || 0) + 1)));
             const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0]);
             row.innerHTML = `<span class="fp-label">${esc(i18n.t('genre'))}</span>` +
                 chip('all', i18n.t('wl_all'), genre === 'all') +
@@ -205,7 +211,7 @@ function arCell(m) {
     const r       = Number(m.rating);
     const rTxt    = Number.isInteger(r) ? String(r) : r.toFixed(1);
     const rClass  = r >= 10 ? 'r10' : r >= 9 ? 'r9' : r >= 8 ? 'r8' : '';
-    const genre   = (m.genres || [])[0] || '';
+    const genre   = genresOf(m)[0] || '';
     const gc      = genreColor(genre);
     const dir     = m.director && m.director !== 'Unknown' ? m.director : '';
     const yr      = filmYear(m);
@@ -269,7 +275,7 @@ function matchRating(rv, key) {
 function matchDecade(year, key) {
     const y = Number(year) || 0;
     if (!y) return false;
-    if (key === 'classic') return y < 1990;
+    if (key === 'classic') return y < 1980;
     const d = Number(key);
     return y >= d && y <= d + 9;
 }

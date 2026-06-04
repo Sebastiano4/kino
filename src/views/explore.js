@@ -306,7 +306,9 @@ function appendCards(grid, results) {
           </div>
           <div class="poster-overlay">
             <div class="ov-title">${esc(r.title)}</div>
-            <div class="ov-sub">${esc([r.year, gname].filter(Boolean).join(' · '))}</div>
+            <div class="ov-sub">
+              <span class="ov-imdb" hidden style="color:#F5C518;font:600 .64rem var(--fm)"></span><span class="ov-imdb-sep" hidden style="opacity:.3;margin:0 3px">·</span>${esc([gname, r.year].filter(Boolean).join(' · '))}
+            </div>
             <div class="ov-actions">
               <button class="ov-btn primary" data-act="priority">🎯 ${esc(i18n.t('wl_tier_priority'))}</button>
               <button class="ov-btn sec" data-act="watchlist">+ ${esc(i18n.t('status_watchlist'))}</button>
@@ -320,13 +322,21 @@ function appendCards(grid, results) {
             .catch(() => imdbRating({ title: r.title, year: r.year }))
             .then(({ rating } = {}) => {
                 const pill = card.querySelector('.imdb-pill');
-                if (!pill) return;
+                const ovImdb = card.querySelector('.ov-imdb');
+                const ovSep = card.querySelector('.ov-imdb-sep');
                 if (rating) {
-                    pill.textContent = `IMDb ${rating}`;
-                    const n = parseFloat(rating);
-                    pill.classList.toggle('imdb-high', n >= 7);
-                    pill.classList.toggle('imdb-low', n < 5);
-                } else pill.remove();
+                    if (pill) {
+                        pill.textContent = `IMDb ${rating}`;
+                        const n = parseFloat(rating);
+                        pill.classList.toggle('imdb-high', n >= 7);
+                        pill.classList.toggle('imdb-low', n < 5);
+                    }
+                    if (ovImdb) {
+                        ovImdb.textContent = `IMDb ${rating}`;
+                        ovImdb.hidden = false;
+                        if (ovSep) ovSep.hidden = false;
+                    }
+                } else if (pill) pill.remove();
             });
     });
 }
