@@ -18,10 +18,11 @@
  * Everything is reactive via the singleton store; tier moves patch optimistically.
  */
 import { init, subscribe, patchMovie, removeMovie } from '../core/store.js';
-import { updateMovie, deleteMovie } from '../data/repo.js';
+import { updateMovie, deleteMovie, getMovie } from '../data/repo.js';
 import i18n from '../core/i18n.js';
 import { openDetail } from '../components/detail.js';
 import { openWatchedModal } from '../components/watched.js';
+import { showToast } from '../components/toast.js';
 
 // ── Tier model ───────────────────────────────────────────────────────────────
 const TIERS = ['priority', 'standard', 'backlog'];
@@ -279,10 +280,18 @@ export const watchlist = {
             patchMovie(id, { tier: to });               // optimistic → re-renders via store
             try {
                 await updateMovie(id, { tier: to });    // persist (offline → queued by repo)
+                // Read the doc back to confirm it actually persisted server-side.
+                // This catches silent failures (rules rejection swallowed offline,
+                // wrong doc path, merge dropping the field, etc.).
+                const fresh = await getMovie(id);
+                if (!fresh)            throw new Error('readback: document not found');
+                if (fresh.tier !== to) throw new Error(`readback tier="${fresh.tier}" expected "${to}"`);
             } catch (e) {
                 // Surface the real cause and undo the optimistic move so the UI
                 // never claims a change that didn't actually save.
+                const msg = e?.code || e?.message || String(e);
                 console.warn('[watchlist] tier save failed:', e);
+                showToast(`Tier non salvato: ${msg}`, { tone: 'error', timeout: 8000 });
                 patchMovie(id, { tier: prev || 'standard' });
             }
         };
