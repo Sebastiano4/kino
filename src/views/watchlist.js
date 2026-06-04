@@ -370,15 +370,16 @@ export const watchlist = {
         $('#wlBtnGrid').addEventListener('click', () => setView('grid'));
         $('#wlBtnList').addEventListener('click', () => setView('list'));
 
-        // ── Runtime backfill ───────────────────────────────────────────────────
-        // Most watchlist films are added without a runtime (imported / quick-add),
-        // so the "total runtime" reads 0. Fetch the missing runtimes once from
-        // TMDB, update the total live, and persist so it sticks.
+        // ── Metadata backfill ──────────────────────────────────────────────────
+        // Films added via import / Explore quick-add often miss runtime, director
+        // and genres, so the total runtime reads 0 and cards look bare. Fetch the
+        // missing fields once from TMDB, update live, and persist so it sticks.
         const self = this;
         const rtTried = new Set();
+        const needsBackfill = m => m.tmdbId && !String(m.id || '').startsWith('offline-')
+            && (!m.runtime || !m.director || !(Array.isArray(m.genres) && m.genres.length));
         const backfillRuntimes = async () => {
-            const todo = allMovies.filter(m =>
-                !m.runtime && m.tmdbId && !rtTried.has(m.tmdbId) && !String(m.id || '').startsWith('offline-'));
+            const todo = allMovies.filter(m => !rtTried.has(m.tmdbId) && needsBackfill(m));
             if (!todo.length) return;
             todo.forEach(m => rtTried.add(m.tmdbId));
             const q = todo.slice();
@@ -386,11 +387,20 @@ export const watchlist = {
                 while (q.length && self._alive) {
                     const m = q.shift();
                     try {
-                        const d = await movieDetails(m.tmdbId);
-                        if (d?.runtime) {
-                            m.runtime = d.runtime;          // local copy → total updates
+                        const d = await movieDetails(m.tmdbId, 'credits');
+                        const patch = {};
+                        if (!m.runtime && d?.runtime) patch.runtime = d.runtime;
+                        if (!m.director) {
+                            const dir = (d?.credits?.crew || []).find(c => c.job === 'Director')?.name;
+                            if (dir) patch.director = dir;
+                        }
+                        if (!(Array.isArray(m.genres) && m.genres.length) && d?.genres?.length) {
+                            patch.genres = d.genres.map(g => g.name);
+                        }
+                        if (Object.keys(patch).length) {
+                            Object.assign(m, patch);        // local copy → total/cards update
                             renderMeta();
-                            updateMovie(m.id, { runtime: d.runtime }).catch(() => {});
+                            updateMovie(m.id, patch).catch(() => {});
                         }
                     } catch {}
                 }

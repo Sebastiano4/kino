@@ -2188,9 +2188,9 @@ textarea.filter-input {
 /* ═══════════ EXPLORE · ARCHIVE · PROFILE — redesign ═══════════ */
 
 /* ── Shared: filter accordion + sort dropdown ── */
-.filter-panel { overflow: hidden; max-height: 0; transition: max-height .35s var(--ease); }
-.filter-panel.open { max-height: 460px; border-bottom: 1px solid var(--line); }
-.filter-panel-inner { padding: 14px var(--gutter) 18px; display: flex; flex-direction: column; gap: 12px;
+.acc-panel { overflow: hidden; max-height: 0; transition: max-height .35s var(--ease); }
+.acc-panel.open { max-height: 460px; border-bottom: 1px solid var(--line); }
+.acc-inner { padding: 14px var(--gutter) 18px; display: flex; flex-direction: column; gap: 12px;
   background: color-mix(in srgb, var(--bg-1) 60%, transparent); }
 .fp-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .fp-label { font: 500 .6rem var(--font-mono); color: var(--ink-mute); text-transform: uppercase;

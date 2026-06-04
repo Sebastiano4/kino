@@ -65,8 +65,8 @@ export const archive = {
               </div>
             </div>
 
-            <div class="filter-panel" id="arFilterPanel">
-              <div class="filter-panel-inner">
+            <div class="acc-panel" id="arFilterPanel">
+              <div class="acc-inner">
                 <div class="fp-row" data-row="rating">
                   <span class="fp-label">${esc(i18n.t('rating'))}</span>
                   ${RATING_ROW.map(r => chip(r.id, lbl(r.label), r.id === 'all')).join('')}

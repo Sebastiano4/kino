@@ -12,8 +12,8 @@
 import { searchMovies as tmdbSearch, discoverMovies, posterUrl, movieDetails } from '../services/tmdb.js';
 import { imdbRating } from '../services/omdb.js';
 import { openDetail } from '../components/detail.js';
-import { addMovie } from '../data/repo.js';
-import { getState, appendMovie } from '../core/store.js';
+import { addMovie, updateMovie } from '../data/repo.js';
+import { getState, appendMovie, patchMovie } from '../core/store.js';
 import { showToast } from '../components/toast.js';
 import i18n from '../core/i18n.js';
 
@@ -92,8 +92,8 @@ export const explore = {
               </div>
             </div>
 
-            <div class="filter-panel" id="exFilterPanel">
-              <div class="filter-panel-inner">
+            <div class="acc-panel" id="exFilterPanel">
+              <div class="acc-inner">
                 <div class="fp-row" data-row="genre">
                   <span class="fp-label">${esc(i18n.t('genre'))}</span>
                   ${GENRE_ROW.map(g => chip('genre', g.id, lbl(g.label), g.id === 'all')).join('')}
@@ -248,15 +248,27 @@ function quickAdd(r, tier, cardEl) {
         showToast(i18n.t('ex_already_wl'), { tone: 'neutral' });
         return;
     }
+    const genres = (r.genreIds || []).map(id => GENRE_NAMES[id]).filter(Boolean);
     const payload = {
         title: r.title, year: r.year, poster: r.poster, plot: r.plot || '',
-        tmdbId: r.tmdbId, genreIds: r.genreIds || [],
+        tmdbId: r.tmdbId, genreIds: r.genreIds || [], genres,
         originalLanguage: r.originalLanguage || '', releaseDate: r.releaseDate || '',
         isWatchlist: true, isFavorite: false, rating: null, tier,
     };
     cardEl.classList.add('ex-added');
     addMovie(payload).then(id => {
-        if (id) appendMovie({ ...payload, id });
+        if (!id) return;
+        appendMovie({ ...payload, id });
+        // Enrich to match cards added via the detail modal: director, full
+        // genre names, runtime — so the watchlist card is uniform.
+        movieDetails(r.tmdbId, 'credits').then(d => {
+            const patch = {};
+            const director = (d?.credits?.crew || []).find(c => c.job === 'Director')?.name;
+            if (director)          patch.director = director;
+            if (d?.genres?.length) patch.genres = d.genres.map(g => g.name);
+            if (d?.runtime)        patch.runtime = d.runtime;
+            if (Object.keys(patch).length) { patchMovie(id, patch); updateMovie(id, patch).catch(() => {}); }
+        }).catch(() => {});
     }).catch(() => {});
     const label = tier === 'priority' ? i18n.t('wl_tier_priority') : i18n.t('status_watchlist');
     showToast(`${esc(r.title)} → ${label}`, { tone: 'neutral' });
