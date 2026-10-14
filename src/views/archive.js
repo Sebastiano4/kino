@@ -13,6 +13,13 @@ import { init, subscribe, removeMovie } from '../core/store.js';
 import { deleteMovie } from '../data/repo.js';
 import i18n from '../core/i18n.js';
 import { openDetail } from '../components/detail.js';
+import { openReviewReader } from '../components/reviewFile.js';
+
+// Archive view: poster grid, or a diary-style list of films with a review file.
+const VIEW_KEY = 'kino-archive-view';
+const savedView = () => { try { return localStorage.getItem(VIEW_KEY) === 'reviews' ? 'reviews' : 'grid'; } catch { return 'grid'; } };
+const saveView  = v => { try { localStorage.setItem(VIEW_KEY, v); } catch {} };
+const hasReview = m => !!m.reviewFile?.content;
 
 const RATING_ROW = [
     { id: 'all', label: 'wl_all' },
@@ -55,6 +62,7 @@ export const archive = {
     async mount(el) {
         let all = [];
         let q = '', rating = 'all', decade = 'any', genre = 'all', sort = SORT_ROW[0].id;
+        let view = savedView();
 
         el.innerHTML = `
           <div class="ar-view">
@@ -64,6 +72,10 @@ export const archive = {
               </div>
               <button class="ar-filter-btn" id="arFilterBtn"><span>${esc(i18n.t('filters'))}</span>${CHEVRON}</button>
               <span class="ar-count" id="arCount"></span>
+              <div class="ar-viewtog" role="group" aria-label="${esc(i18n.t('ar_view'))}">
+                <button type="button" class="ar-vt-btn" data-view="grid">▦ ${esc(i18n.t('ar_view_posters'))}</button>
+                <button type="button" class="ar-vt-btn" data-view="reviews">📝 ${esc(i18n.t('ar_view_reviews'))}</button>
+              </div>
               <div class="ar-sort-btn" id="arSortBtn">
                 <span id="arSortLabel">${esc(lbl(SORT_ROW[0].label))}</span>${CHEVRON}
                 <div class="sort-dropdown">
@@ -105,18 +117,36 @@ export const archive = {
             if (rating !== 'all') list = list.filter(m => matchRating(m.rating, rating));
             if (decade !== 'any') list = list.filter(m => matchDecade(filmYear(m), decade));
             if (genre !== 'all')  list = list.filter(m => genresOf(m).some(g => String(g) === genre));
+            if (view === 'reviews') list = list.filter(hasReview);
             return sortFilms(list, sort);
         };
 
         const render = () => {
             const list = visible();
-            countEl.textContent = `${list.length} ${i18n.t('wl_films')}`;
+            const reviews = view === 'reviews';
+            grid.classList.toggle('ar-grid--reviews', reviews);
+            el.querySelectorAll('.ar-vt-btn').forEach(b => {
+                const on = b.dataset.view === view;
+                b.classList.toggle('on', on);
+                b.setAttribute('aria-pressed', String(on));
+            });
+            countEl.textContent = `${list.length} ${i18n.t(reviews ? 'ar_reviews_n' : 'wl_films')}`;
             if (!list.length) {
-                grid.innerHTML = `<div class="empty"><div class="big">${esc(i18n.t('archive_empty'))}</div>${esc(i18n.t('add_from_explore'))}</div>`;
+                grid.innerHTML = reviews
+                    ? `<div class="empty"><div class="big">${esc(i18n.t('ar_no_reviews'))}</div>${esc(i18n.t('ar_no_reviews_hint'))}</div>`
+                    : `<div class="empty"><div class="big">${esc(i18n.t('archive_empty'))}</div>${esc(i18n.t('add_from_explore'))}</div>`;
                 return;
             }
-            grid.innerHTML = list.map(arCell).join('');
+            grid.innerHTML = list.map(reviews ? arReviewRow : arCell).join('');
         };
+
+        // ── Posters / Reviews toggle (remembered per device) ──────────────────
+        el.querySelector('.ar-viewtog').addEventListener('click', e => {
+            const b = e.target.closest('.ar-vt-btn'); if (!b || b.dataset.view === view) return;
+            view = b.dataset.view;
+            saveView(view);
+            render();
+        });
 
         const refreshGenreChips = () => {
             const row = el.querySelector('#arGenreRow');
@@ -178,6 +208,14 @@ export const archive = {
 
         // ── Card actions (delegated) ──────────────────────────────────────────
         grid.addEventListener('click', e => {
+            // Reviews list: row → full-screen reader; "Film page" link → detail modal.
+            const rev = e.target.closest('.ar-rev');
+            if (rev) {
+                const m = all.find(x => x.id === rev.dataset.id); if (!m) return;
+                if (e.target.closest('[data-act="detail"]')) openDetail(m, { mode: 'archive' });
+                else openReviewReader(m.reviewFile);
+                return;
+            }
             const cell = e.target.closest('.ar-cell'); if (!cell) return;
             const id = cell.dataset.id;
             const m  = all.find(x => x.id === id); if (!m) return;
@@ -190,6 +228,13 @@ export const archive = {
             }
             // Edit / Note / card body → detail modal
             openDetail(m, { mode: 'archive' });
+        });
+
+        // Keyboard: Enter / Space on a review row opens it like a click.
+        grid.addEventListener('keydown', e => {
+            if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.classList?.contains('ar-rev')) return;
+            e.preventDefault();
+            e.target.click();
         });
 
         // ── Boot ──────────────────────────────────────────────────────────────
@@ -249,6 +294,62 @@ function arCell(m) {
           </div>
         </div>
       </div>`;
+}
+
+// ── Review row (diary list) ──────────────────────────────────────────────────
+function arReviewRow(m) {
+    const r    = Number(m.rating);
+    const rTxt = Number.isInteger(r) ? String(r) : r.toFixed(1);
+    const dir  = m.director && m.director !== 'Unknown' ? m.director : '';
+    const yr   = filmYear(m);
+    const seen = fmtSeen(m.watchedDate);
+    const art  = m.poster
+        ? `<img loading="lazy" decoding="async" alt="" src="${esc(m.poster)}" onerror="this.classList.add('is-broken')">`
+        : arArt(m.title || '');
+    return `
+      <article class="ar-rev" data-id="${esc(m.id)}" role="button" tabindex="0"
+               aria-label="${esc(i18n.t('review_mine'))}: ${esc(m.title || '')}">
+        <div class="ar-rev-poster">${art}</div>
+        <div class="ar-rev-body">
+          <div class="ar-rev-head">
+            <span class="ar-rev-title">${esc(m.title || '')}</span>
+            <span class="ar-rev-rating">★ ${esc(rTxt)}</span>
+          </div>
+          <div class="ar-rev-meta">${esc([dir, yr].filter(Boolean).join(' · '))}${seen ? ` <span class="ar-rev-seen">· ${esc(i18n.t('ar_seen_on'))} ${esc(seen)}</span>` : ''}</div>
+          <p class="ar-rev-excerpt">${esc(reviewExcerpt(m))}</p>
+          <div class="ar-rev-foot">
+            <span class="ar-rev-file">${m.reviewFile.type === 'html' ? '🌐' : '📝'} ${esc(m.reviewFile.name || '')}</span>
+            <button type="button" class="ar-rev-link" data-act="detail">${esc(i18n.t('ar_film_page'))} →</button>
+          </div>
+        </div>
+      </article>`;
+}
+
+// Excerpt: first substantial paragraph of the review (HTML) or its opening (TXT).
+const _excerpts = new Map();
+function reviewExcerpt(m) {
+    const rf  = m.reviewFile;
+    const key = `${m.id}:${rf.content.length}`;
+    if (_excerpts.has(key)) return _excerpts.get(key);
+    let text = '';
+    if (rf.type === 'html') {
+        const doc = new DOMParser().parseFromString(rf.content, 'text/html');
+        doc.querySelectorAll('style,script,noscript,template').forEach(n => n.remove());
+        const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+        text = [...doc.querySelectorAll('p')].map(p => clean(p.textContent)).find(t => t.length >= 80)
+            || clean(doc.body?.textContent);
+    } else {
+        text = rf.content.replace(/\s+/g, ' ').trim();
+    }
+    if (text.length > 240) text = text.slice(0, 240).replace(/\s+\S*$/, '') + '…';
+    _excerpts.set(key, text);
+    return text;
+}
+
+function fmtSeen(d) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return '';
+    const locale = i18n.getLanguage?.() === 'it' ? 'it-IT' : 'en-GB';
+    return new Date(`${d}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function arArt(title) {
