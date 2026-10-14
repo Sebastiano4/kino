@@ -40,11 +40,17 @@ export function openWatchedModal(movie, options = {}) {
           </div>
 
           <div class="watched-field">
-            <label class="filter-section-label">${i18n.t('rating_label')}</label>
+            <label class="filter-section-label" for="wRating">${i18n.t('rating_label')}</label>
             <div class="rating-control">
+              <button type="button" class="rating-step" id="wRatingDec" aria-label="−0.5">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+              </button>
               <input type="range" class="rating-slider" min="1" max="10" step="0.5"
-                     value="${init.rating}" id="wRating">
-              <span class="rating-display" id="wRatingVal">★ ${Number(init.rating).toFixed(1)}</span>
+                     value="${init.rating}" id="wRating" aria-valuetext="${Number(init.rating).toFixed(1)} / 10">
+              <button type="button" class="rating-step" id="wRatingInc" aria-label="+0.5">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <output class="rating-display" id="wRatingVal" for="wRating" aria-live="polite">★ ${Number(init.rating).toFixed(1)}</output>
             </div>
           </div>
 
@@ -113,9 +119,23 @@ export function openWatchedModal(movie, options = {}) {
     // ── Rating slider ────────────────────────────────────────────────────────
     const slider  = overlay.querySelector('#wRating');
     const display = overlay.querySelector('#wRatingVal');
-    slider.addEventListener('input', () => {
-        display.textContent = `★ ${parseFloat(slider.value).toFixed(1)}`;
-    });
+    const decBtn  = overlay.querySelector('#wRatingDec');
+    const incBtn  = overlay.querySelector('#wRatingInc');
+    const syncRating = () => {
+        const v = parseFloat(slider.value);
+        display.textContent = `★ ${v.toFixed(1)}`;
+        slider.setAttribute('aria-valuetext', `${v.toFixed(1)} / 10`);
+        decBtn.disabled = v <= 1;
+        incBtn.disabled = v >= 10;
+    };
+    const stepRating = delta => {
+        slider.value = Math.min(10, Math.max(1, parseFloat(slider.value) + delta));
+        syncRating();
+    };
+    slider.addEventListener('input', syncRating);
+    decBtn.addEventListener('click', () => stepRating(-0.5));
+    incBtn.addEventListener('click', () => stepRating(0.5));
+    syncRating();
 
     // ── File preview (PDF / HTML / TXT inline, replaces textarea) ───────────
     const wNotes      = overlay.querySelector('#wNotes');

@@ -1,10 +1,9 @@
 /**
- * VAULT — analytics, Elo ranking, people.
+ * VAULT — analytics, people.
  *
  * Tabs:
  *   Collection — badge-tiered, searchable grid of rated films.
  *   Overview   — KPI tiles, genre breakdown, decade distribution, world map.
- *   Rankings   — Elo leaderboard.
  *   People     — directors (min 3 films, by avg rating) & actors (by films
  *                seen, then avg), each with a Wikipedia portrait.
  *
@@ -14,7 +13,7 @@
 import { init, subscribe } from '../core/store.js';
 import { getMatches, updateMovie } from '../data/repo.js';
 import i18n from '../core/i18n.js';
-import { tierOf, seedElo } from '../core/elo.js';
+import { seedElo } from '../core/elo.js';
 import { computeBadgeBreakpoints, getBadge, tallyBadges, BADGE_TIERS } from '../core/badges.js';
 import { aggregateByISO } from '../core/countries.js';
 import { backfillCountries, mergeCachedCountries } from '../services/geoEnrich.js';
@@ -33,7 +32,6 @@ export const vault = {
             <div class="vault-tabs" id="vaultTabs">
               <button class="vault-tab active" data-tab="collection">${i18n.t('vault_collection')}</button>
               <button class="vault-tab" data-tab="overview">Overview</button>
-              <button class="vault-tab" data-tab="rankings">Rankings</button>
               <button class="vault-tab" data-tab="directors">People</button>
             </div>
             <div id="vaultBody">
@@ -61,7 +59,6 @@ export const vault = {
                 render();
             });
             if (tab === 'overview')  _renderOverview(body, rated, wl, matches);
-            if (tab === 'rankings')  _renderRankings(body, rated, matches);
             if (tab === 'directors') _renderPeople(body, rated, peopleMode, next => {
                 if (next.peopleMode) peopleMode = next.peopleMode;
                 render();
@@ -119,6 +116,12 @@ function _renderCollection(body, rated, matches, viewMode, activeBadge, searchQu
 
     const insights = _collectionInsights(rated, matches);
 
+    // Battles/wins per movie, computed from the real match history (the `matches`
+    // collection) rather than the movie doc's own `eloMatches` counter — that
+    // counter can be missing or stale (e.g. for imported/legacy records), while
+    // every battle actually played through the app has a match record.
+    const statsByMovie = _battleStatsByMovie(matches);
+
     body.innerHTML = `
       <div class="vault-controls">
         <div class="vault-view-modes">
@@ -151,7 +154,7 @@ function _renderCollection(body, rated, matches, viewMode, activeBadge, searchQu
         </div>
       </div>
       ${filtered.length ? `<div class="vault-collection vault-collection--${viewMode}">
-        ${filtered.map(m => _collectionCard(m, viewMode)).join('')}
+        ${filtered.map(m => _collectionCard(m, viewMode, statsByMovie[m.id])).join('')}
       </div>` : `<div class="vault-empty">${i18n.t('vault_empty')}</div>`}`;
 
     body.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => onControl({ viewMode: btn.dataset.view })));
@@ -183,13 +186,15 @@ function _renderCollection(body, rated, matches, viewMode, activeBadge, searchQu
     }));
 }
 
-function _collectionCard(m, viewMode) {
+function _collectionCard(m, viewMode, stats) {
     const poster = m.poster || '';
     const meta = [m.year, m.director, m.runtime ? `${m.runtime} min` : ''].filter(Boolean).join(' • ');
     const badge = m._badge;
     const badgeChip = badge
         ? `<span class="vault-badge-chip" style="--tier-color:${badge.var}" title="${badge.label}">${badge.label}</span>`
         : '';
+    const battles = stats?.battles || 0;
+    const winRate = battles ? `${Math.round((stats.wins / battles) * 100)}%` : '—';
     return `<article class="vault-movie-card" data-movie-id="${esc(m.id)}">
       <div class="vault-movie-poster">
         ${badgeChip}
@@ -207,10 +212,30 @@ function _collectionCard(m, viewMode) {
           <span>Elo ${seedElo(m)}</span>
           <span>IMDb ${m.imdbRating || '—'}</span>
           <span>Your ${m.rating || '—'}</span>
-          <span>${m.eloMatches || 0} battles</span>
+          <span>${battles} battles</span>
+          <span>${winRate} win rate</span>
         </div>` : ''}
       </div>
     </article>`;
+}
+
+/**
+ * Aggregate per-movie battle counts and wins from real match records
+ * (the `matches` collection — one doc per decided duel), keyed by movie id.
+ * This is the source of truth: unlike the movie doc's own `eloMatches`
+ * field, it can't drift out of sync and covers every battle ever fought.
+ */
+function _battleStatsByMovie(matches) {
+    const map = {};
+    (matches || []).forEach(match => {
+        const { movieAId, movieBId, winnerId } = match;
+        [movieAId, movieBId].filter(Boolean).forEach(id => {
+            const s = map[id] || (map[id] = { battles: 0, wins: 0 });
+            s.battles++;
+            if (winnerId === id) s.wins++;
+        });
+    });
+    return map;
 }
 
 function _collectionInsights(rated, matches) {
@@ -420,6 +445,16 @@ const HEAT_STOPS = [
 ];
 const HEAT_ZERO = 'rgb(46,49,56)'; // neutral — countries with no films
 
+// Non-linear (logarithmic) normalisation. The distribution is heavily skewed
+// — one country (e.g. USA) can hold 80%+ of all views — so a linear scale
+// paints that one country hot and crushes everyone else into the same cold
+// tone. log() compresses the outlier and expands the low/mid band, making
+// 30 vs 100 vs 250 films clearly distinct.
+function _scaleT(count, maxCount) {
+    if (maxCount <= 1) return 1;
+    return Math.log(count) / Math.log(maxCount); // count=1 → 0, count=max → 1
+}
+
 function _heatColor(t) {
     const c = Math.max(0, Math.min(1, t));
     for (let i = 1; i < HEAT_STOPS.length; i++) {
@@ -492,7 +527,7 @@ async function _paintWorldMap(container, movies) {
         const iso   = f.properties.iso2;
         const rec   = iso ? agg.get(iso) : null;
         const count = rec ? rec.count : 0;
-        const fill  = count > 0 && maxCount > 0 ? _heatColor(count / maxCount) : HEAT_ZERO;
+        const fill  = count > 0 ? _heatColor(_scaleT(count, maxCount)) : HEAT_ZERO;
         const avg   = rec && rec.avg != null ? rec.avg.toFixed(1) : '';
         return `<path d="${d}" fill="${fill}" class="vault-geo-country${rec ? ' has-data' : ''}"`
              + ` data-iso="${esc(iso || '')}" data-name="${esc(rec ? rec.name : f.properties.name)}"`
@@ -514,7 +549,10 @@ async function _paintWorldMap(container, movies) {
         <span class="vault-geo-legend-label mono">${counted.length} ${counted.length === 1 ? 'country' : 'countries'} · ${totalFilms} films</span>
         <span class="vault-geo-scale">
           <span class="vault-geo-scale-min mono">1</span>
-          <span class="vault-geo-scale-bar"></span>
+          <span class="vault-geo-scale-bar">${(() => {
+            const mid = Math.round(Math.sqrt(maxCount));
+            return maxCount > 3 && mid > 1 && mid < maxCount ? `<span class="vault-geo-scale-mid mono">${mid}</span>` : '';
+          })()}</span>
           <span class="vault-geo-scale-max mono">${maxCount}</span>
           <span class="vault-geo-scale-na"><i></i>${i18n.t('vault_geo_no_data')}</span>
         </span>
@@ -617,26 +655,6 @@ function _renderGeoDetail(panel, rec) {
 
     draw();
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// ── Rankings ───────────────────────────────────────────────────────────────
-
-function _renderRankings(body, rated, matches) {
-    const ranking = [...rated].sort((a, b) => seedElo(b) - seedElo(a)).slice(0, 30);
-
-    body.innerHTML = `
-      <div class="vault-section">
-        <h3 class="vault-section-title">Elo Ranking</h3>
-        ${ranking.length ? `<div class="vault-ranking">
-          ${ranking.map((m, i) => `
-            <div class="vault-rank-row">
-              <span class="vault-rank-pos mono">${i+1}</span>
-              <span class="vault-rank-title serif">${esc(m.title)}</span>
-              <span class="vault-rank-tier">${tierOf(seedElo(m)).label}</span>
-              <span class="vault-rank-elo mono">${seedElo(m)}</span>
-            </div>`).join('')}
-        </div>` : `<div class="vault-empty">${i18n.t('vault_no_rated')}</div>`}
-      </div>`;
 }
 
 // ── Directors ──────────────────────────────────────────────────────────────

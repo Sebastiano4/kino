@@ -15,7 +15,7 @@
 
   --ink:       #0d1117;
   --ink-dim:   #4b5563;
-  --ink-mute:  #9ca3af;
+  --ink-mute:  #5f6672;  /* was #9ca3af (2.4:1) — now ≥4.5:1 on --bg */
 
   --accent:      #0284c7;
   --accent-h:    #0ea5e9;
@@ -47,8 +47,8 @@
 
   /* testo — warm paper tones */
   --ink:       #f0ebe2;
-  --ink-dim:   #998f83;
-  --ink-mute:  #5c554d;
+  --ink-dim:   #a89e91;  /* 7.4:1 on --bg */
+  --ink-mute:  #8c8378;  /* was #5c554d (2.7:1) — now 5.3:1 on --bg */
 
   /* accento principale — gold caldo (V2) */
   --gold:      #C8A97E;
@@ -70,6 +70,17 @@
   --red:    #B8523A;
   --green:  #5E8C65;
   --amber:  #D4714A;
+  --teal:   #5E9C8A;
+  --indigo: #7E8BC8;
+
+  /* badge tiers — percentile-based, warm-to-cool gradient */
+  --badge-goat:        #E8C77A;  /* saturated warm gold — top 1%   */
+  --badge-legendary:   #D4B896;  /* gold warm           — top 1–5% */
+  --badge-masterpiece: #7EC8C0;  /* teal                — top 5–15%  */
+  --badge-elite:       #7E8BC8;  /* indigo              — top 15–30% */
+  --badge-great:       #9CB87E;  /* sage green          — top 30–50% */
+  --badge-average:     #9A8A7A;  /* warm grey           — top 50–75% */
+  --badge-rookie:      #6A6258;  /* muted brown-grey    — bottom 25% */
 
   /* forma */
   --r-sm: 6px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
@@ -105,6 +116,14 @@ body {
 a { color: inherit; text-decoration: none; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+}
 
 h1,h2,h3 { font-family: var(--font-disp); font-weight: 400; letter-spacing: .01em; margin: 0; }
 .mono { font-family: var(--font-mono); }

@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Kino</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0c0b09" id="metaThemeColor">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,8 +28,8 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="src/styles/tokens.css?v=4">
-  <link rel="stylesheet" href="src/styles/app.css?v=4">
+  <link rel="stylesheet" href="src/styles/tokens.css?v=7">
+  <link rel="stylesheet" href="src/styles/app.css?v=8">
 
   <style>
     /* Router loading indicator */
@@ -196,12 +197,14 @@
   <div id="app" hidden>
     <nav class="kino-nav">
       <span class="kino-logo" id="homeBtn"><em>Kino</em></span>
-      <div class="kino-tabs" id="tabs"></div>
-<button id="settingsBtn" class="nav-icon" title="Settings">⚙</button>
+      <div class="kino-tabs" id="tabs" role="navigation" aria-label="Main"></div>
+      <button id="settingsBtn" class="nav-icon" type="button" title="Settings" aria-label="Settings">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
     </nav>
     <main id="view"></main>
   </div>
 
-  <script type="module" src="src/main.js?v=4"></script>
+  <script type="module" src="src/main.js?v=5"></script>
 </body>
 </html>

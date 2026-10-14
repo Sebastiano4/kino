@@ -1,0 +1,217 @@
+{
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\firebase.json": {
+    "mtime": 1780616013.41495,
+    "ast_hash": "301d2cceb3f1813958369ea111bfa6cf",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\manifest.json": {
+    "mtime": 1780315992.2122338,
+    "ast_hash": "8df961dbe5e647101f2ba446db803941",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\sw.js": {
+    "mtime": 1780616021.5661948,
+    "ast_hash": "1ffaf89ff8d04d41cbc6f88172bae136",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\watch-and-deploy.ps1": {
+    "mtime": 1780342881.5467618,
+    "ast_hash": "7cc5aa588268f91176f443998a51e61e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\.claude\\launch.json": {
+    "mtime": 1780340500.287573,
+    "ast_hash": "14a3465ab6c1a25273e7d141a58c5ed0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\.claude\\settings.local.json": {
+    "mtime": 1780557935.9544907,
+    "ast_hash": "8d05c589e6400598667627a07b8703ed",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\main.js": {
+    "mtime": 1780612130.1730523,
+    "ast_hash": "66de4df94c3f7063c69807cd473d503b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\components\\card.js": {
+    "mtime": 1780315921.9174895,
+    "ast_hash": "89bd55506902e7e8ec0e0817e56afe11",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\components\\detail.js": {
+    "mtime": 1780593511.7602975,
+    "ast_hash": "117fbd8dae0887fa9991de0222b0e914",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\components\\filters.js": {
+    "mtime": 1780516796.3178537,
+    "ast_hash": "6947e1acfc1eff888aee8daacedac351",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\components\\toast.js": {
+    "mtime": 1780488833.582923,
+    "ast_hash": "64d5949a992e7910118d24439baf9a6f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\components\\watched.js": {
+    "mtime": 1780497413.0375893,
+    "ast_hash": "51c434a2f3ba0c3805b4fa96036af0c1",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\components\\wrapped.js": {
+    "mtime": 1780393893.962962,
+    "ast_hash": "d1a3e276ac5cd760ffd76964814a3ee0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\auth.js": {
+    "mtime": 1780315804.3000436,
+    "ast_hash": "8c8a00d8fa4a6fbb97c740aa485703f5",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\badges.js": {
+    "mtime": 1780535053.345637,
+    "ast_hash": "59757af232dd87c3483024cacd12f6c5",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\countries.js": {
+    "mtime": 1780592236.50772,
+    "ast_hash": "0f6aab2f1b40a8b62831a4d140feb507",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\elo.js": {
+    "mtime": 1780499143.207513,
+    "ast_hash": "9fd94f18c6e6c21ae2ff1cc9a0c145a6",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\firebase.js": {
+    "mtime": 1780318278.3299284,
+    "ast_hash": "cf51be3d592d8189d93bf5b95150f10f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\gestures.js": {
+    "mtime": 1780393921.3142257,
+    "ast_hash": "4b5a2be3e692c000641c31ec792b20a3",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\i18n.js": {
+    "mtime": 1780612217.7146719,
+    "ast_hash": "12859c9bb9c4091d39763abbc54b72f5",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\router.js": {
+    "mtime": 1780497364.1995876,
+    "ast_hash": "41842ec09153a80ab49479958fe36814",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\store.js": {
+    "mtime": 1780393221.61861,
+    "ast_hash": "7ff11498eedca0c4dc182f6eef7cd26a",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\core\\theme.js": {
+    "mtime": 1780393284.5052648,
+    "ast_hash": "9d3653f13d7bd79cc6dabe9e89a3e67e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\data\\offline.js": {
+    "mtime": 1780341720.125551,
+    "ast_hash": "784002f3bb6823a6225ae0e154c9662e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\data\\repo.js": {
+    "mtime": 1780611251.5075777,
+    "ast_hash": "d270ff06f0259de22b971cb2b6eedbeb",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\services\\ai.js": {
+    "mtime": 1780393388.3423295,
+    "ast_hash": "c1825170ec598f3b8bc3564569e7a63b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\services\\omdb.js": {
+    "mtime": 1780615520.8657155,
+    "ast_hash": "71d26ba2b672276f86476e754d386160",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\services\\people.js": {
+    "mtime": 1780581303.5604725,
+    "ast_hash": "12fe79ab181c4c78ca8c2fccf7bd723f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\services\\tmdb.js": {
+    "mtime": 1780497386.4343843,
+    "ast_hash": "7f22f896b5c0448dc3e5903516930aad",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\views\\archive.js": {
+    "mtime": 1780614232.7251682,
+    "ast_hash": "344734a536f4cbfb90c92ac5dbd29417",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\views\\battle.js": {
+    "mtime": 1780499196.6814573,
+    "ast_hash": "de25f8aef491a32e9976fefb571918e0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\views\\explore.js": {
+    "mtime": 1780615529.3273294,
+    "ast_hash": "954742b3318e263e1145afaea94b53f0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\views\\home.js": {
+    "mtime": 1780393669.9648433,
+    "ast_hash": "17016bf62177d6f1a926606ec5ceaa3e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\views\\settings.js": {
+    "mtime": 1780612199.7988682,
+    "ast_hash": "7a6528b9fa89195ad5c9c12ff528ecd6",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\views\\vault.js": {
+    "mtime": 1780614507.4917786,
+    "ast_hash": "cb8e81644004bc28606a6e7b96a8b97e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\views\\watchlist.js": {
+    "mtime": 1780613803.3773406,
+    "ast_hash": "72416724560b44392e44787fd5232be2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\HANDOFF.md": {
+    "mtime": 1780497997.4723692,
+    "ast_hash": "acea21ea75583d83d5254337f9669dd2",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\index.html": {
+    "mtime": 1780617262.9232104,
+    "ast_hash": "4d3e4cb6de0a493b2bd65498846cf7d0",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\README.md": {
+    "mtime": 1780316026.305541,
+    "ast_hash": "4f2cedb41d5de6547c3eb1781a08a769",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\assets\\icons\\icon-192.png": {
+    "mtime": 1780316019.4021523,
+    "ast_hash": "696b32e6013cd4eb9706e70959798d0e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\assets\\icons\\icon-512.png": {
+    "mtime": 1780316019.467031,
+    "ast_hash": "fe41eed4ea68dd2f1cb4551825da5011",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\data\\world-110m.json": {
+    "mtime": 1780583534.959599,
+    "ast_hash": "46a9c9adf611fa05b064df8e4e20795e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\gjela\\OneDrive\\Documenti\\kino\\src\\services\\geoEnrich.js": {
+    "mtime": 1780592274.0562131,
+    "ast_hash": "67ba832c267a4373954e8b4f4b86265b",
+    "semantic_hash": ""
+  }
+}

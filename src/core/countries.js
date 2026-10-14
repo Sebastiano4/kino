@@ -100,6 +100,19 @@ export function lookupCountry(name) {
     return rec ? { name: canon, ...rec } : null;
 }
 
+/** Reverse: ISO-2 code → geo record (for TMDB origin_country). */
+let _isoIndex = null;
+export function isoToCountry(iso) {
+    if (!iso) return null;
+    if (!_isoIndex) {
+        _isoIndex = {};
+        for (const [name, rec] of Object.entries(COUNTRIES)) {
+            if (!_isoIndex[rec.iso]) _isoIndex[rec.iso] = { name, ...rec };
+        }
+    }
+    return _isoIndex[String(iso).toUpperCase()] || null;
+}
+
 /**
  * Aggregate a film array into per-country statistics.
  * Each film with N production countries contributes 1 count to each.
@@ -136,7 +149,12 @@ export function project(lat, lon, W = 900, H = 420) {
 
 /**
  * Aggregate films by ISO-2 country for the choropleth.
- * Each film contributes 1 to every production country it carries.
+ *
+ * Each film is attributed to its PRIMARY production country only — the first
+ * entry that resolves. Co-productions list partner countries too (e.g. OMDb
+ * gives "Iran, France, Australia" for an Iranian film), and counting a film
+ * for every partner scatters it across minor countries, which reads as noise
+ * on the map. The primary country is what "where my films come from" means.
  *
  * @param {Array} films
  * @returns {Map<string, { iso, name, count, avg:number|null, films:Array }>}
@@ -145,18 +163,24 @@ export function project(lat, lon, W = 900, H = 420) {
 export function aggregateByISO(films) {
     const map = new Map();
     (films || []).forEach(m => {
-        (m.countries || []).forEach(rawName => {
-            const c = lookupCountry(rawName);
-            if (!c) return;
-            if (!map.has(c.iso)) {
-                map.set(c.iso, { iso: c.iso, name: c.name, count: 0, _sum: 0, _rated: 0, films: [] });
+        // Prefer an explicit origin (TMDB origin_country); otherwise the first
+        // resolvable production country.
+        let c = m.originCountry ? lookupCountry(m.originCountry) : null;
+        if (!c) {
+            for (const rawName of (m.countries || [])) {
+                c = lookupCountry(rawName);
+                if (c) break;
             }
-            const rec = map.get(c.iso);
-            rec.count++;
-            rec.films.push(m);
-            const r = Number(m.rating);
-            if (m.rating != null && !Number.isNaN(r)) { rec._sum += r; rec._rated++; }
-        });
+        }
+        if (!c) return;
+        if (!map.has(c.iso)) {
+            map.set(c.iso, { iso: c.iso, name: c.name, count: 0, _sum: 0, _rated: 0, films: [] });
+        }
+        const rec = map.get(c.iso);
+        rec.count++;
+        rec.films.push(m);
+        const r = Number(m.rating);
+        if (m.rating != null && !Number.isNaN(r)) { rec._sum += r; rec._rated++; }
     });
     map.forEach(rec => {
         rec.avg = rec._rated ? rec._sum / rec._rated : null;
