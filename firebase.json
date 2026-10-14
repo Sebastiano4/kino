@@ -5,7 +5,12 @@
   "hosting": {
     "target": "kino",
     "public": ".",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "README.md"],
+    "ignore": [
+      "firebase.json", "firestore.rules", "skills-lock.json",
+      "**/.*", "**/.*/**", "**/node_modules/**",
+      "**/*.md", "**/*.bat", "**/*.ps1",
+      "graphify-out/**"
+    ],
     "rewrites": [
       { "source": "**", "destination": "/index.html" }
     ],

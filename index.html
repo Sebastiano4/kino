@@ -186,10 +186,16 @@
   <!-- Film grain overlay (V2 design) -->
   <div class="grain-overlay" aria-hidden="true"></div>
 
-  <!-- GATE login -->
-  <div id="gate" class="center-screen">
+  <!-- SPLASH: shown while Firebase restores the saved session -->
+  <div id="splash" class="center-screen">
     <div class="kino-logo" style="font-size:3rem"><em>Kino</em></div>
-    <p style="color:var(--ink-dim);max-width:340px;line-height:1.5">Your cinematic operating system.</p>
+    <div class="router-spinner" role="status" aria-label="Loading"></div>
+  </div>
+
+  <!-- GATE login (shown only once auth reports signed-out) -->
+  <div id="gate" class="center-screen" hidden>
+    <div class="kino-logo" style="font-size:3rem"><em>Kino</em></div>
+    <p id="gateTagline" style="color:var(--ink-dim);max-width:340px;line-height:1.5">Your cinematic operating system.</p>
     <button id="loginBtn" class="btn btn-accent">Continue with Google</button>
   </div>
 
@@ -205,6 +211,6 @@
     <main id="view"></main>
   </div>
 
-  <script type="module" src="src/main.js?v=5"></script>
+  <script type="module" src="src/main.js?v=6"></script>
 </body>
 </html>

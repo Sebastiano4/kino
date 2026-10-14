@@ -9,7 +9,7 @@ App cinema PWA (vanilla JS + Firebase). Un sistema operativo cinematografico per
 Identità visiva propria: palette cyan su sfondo deep blue-black, design premium.
 
 ## 2. Dove vive
-- **Codice:** `C:\Users\gjela\OneDrive\Documenti\kino\`
+- **Codice:** `C:\Users\gjela\OneDrive\Documenti\APP\kino\`
 - **GitHub:** `https://github.com/Sebastiano4/kino` (branch `master`)
 - **URL produzione:** `https://kino-sg.web.app`
 - **Firebase project:** `sebas-reviews` (infrastruttura condivisa)
@@ -30,10 +30,12 @@ src/
     gestures.js        swipe tab navigation con momentum e spring animation
   data/
     repo.js            unico punto Firestore + export/import CSV/JSON
-    offline.js         offline queue per operazioni Firestore
+    offline.js         LEGACY: vecchia coda IndexedDB, solo svuotata al login.
+                       L'offline ora è la cache persistente di Firestore (core/firebase.js)
   services/
     tmdb.js            proxy TMDB (posterUrl, backdropUrl, genreList, watch/providers)
-    omdb.js            rating IMDb via proxy Cloud Function
+    omdb.js            imdbRating() via omdbProxy; imdbFull() ancora diretto con key
+                       nel client (serve Country/Ratings, che il proxy non restituisce)
     ai.js              Gemini AI via proxy
   components/
     card.js            card film riusabile
@@ -98,14 +100,13 @@ src/
 **DA FARE:**
 1. Logo/icone proprie (`assets/icons/` sono placeholder)
 2. Firestore Security Rules per `apps/kino/**` (vedi sezione 6)
-3. Fix tmdbProxy Cloud Function: restituisce 403 Forbidden su richieste autenticate
-4. Notifiche PWA (push notifications)
-5. Crew data (director filmography, actor detail pages)
-6. AI thematic exploration (Gemini integration nella vista Explore)
+3. Notifiche PWA (push notifications)
+4. Crew data (director filmography, actor detail pages)
+5. AI thematic exploration (Gemini integration nella vista Explore)
 
 ## 5. Comandi
 ```powershell
-cd "C:\Users\gjela\OneDrive\Documenti\kino"
+cd "C:\Users\gjela\OneDrive\Documenti\APP\kino"
 firebase serve                              # http://localhost:5000
 firebase deploy --only hosting:kino        # → https://kino-sg.web.app
 .\deploy-git-firestore.bat                 # git add/commit/push + deploy hosting+firestore
@@ -122,12 +123,18 @@ match /apps/kino/users/{uid}/{document=**} {
 
 ## 7. Cloud Functions (Firebase)
 Le API key segrete vivono nelle Cloud Functions in `functions/`:
-- `tmdbProxy` — proxy TMDB (⚠️ restituisce 403, da investigare)
+Codice sorgente in `APP\sebas-reviews\functions\index.js` (progetto condiviso):
+- `tmdbProxy` — proxy TMDB (funzionante)
 - `omdbProxy` — rating IMDb via OMDb API (funzionante, key in `.env`)
-- `aiProxy` — Gemini AI (non ancora integrato nel client)
+- `analyzeReview` — Gemini AI (non ancora integrato nel client Kino)
 
-Il problema 403 sul tmdbProxy è persistente: il token JWT viene inviato correttamente
-ma la Cloud Function rifiuta. Non blocca le funzionalità principali dell'app.
+⚠️ **Le Cloud Functions richiedono il piano Blaze.** A ottobre 2026 il progetto
+era tornato su Spark (nessun billing account): tutte le Functions rispondevano
+503 ed Explore mostrava "TMDB error". Risolto ricollegando un billing account
+(budget alert 5 €). Se Explore torna a dare errore, controlla prima il piano
+nella console Firebase. Test rapido: una POST senza login a
+`https://us-central1-sebas-reviews.cloudfunctions.net/tmdbProxy` deve
+rispondere 401 "Utente non autenticato" (= funzione viva); 503 = funzione giù.
 
 ---
-*Aggiornato 2026-06-03 v1.3*
+*Aggiornato 2026-10-14 v1.4*

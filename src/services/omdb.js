@@ -1,4 +1,14 @@
-/** OMDb — direct API client (no proxy). */
+/**
+ * OMDb client.
+ *  - imdbRating(): via the omdbProxy Cloud Function (key on the backend,
+ *    7-day Firestore cache shared across users). Used by Explore grids.
+ *  - imdbFull():   still direct, because callers need raw fields (Country,
+ *    Ratings, Year) that omdbProxy does not return yet.
+ */
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js";
+import { functions } from '../core/firebase.js';
+
+const proxy = httpsCallable(functions, 'omdbProxy');
 
 const API_KEY = '3bab6459';
 const BASE    = 'https://www.omdbapi.com/';
@@ -32,15 +42,15 @@ async function fetchOMDb(params) {
     return data;
 }
 
+/** @returns {Promise<{rating: string|null, error?: true}>} error set when the lookup itself failed */
 export async function imdbRating({ imdbId, title, year } = {}) {
     if (!imdbId && !title) return { rating: null };
     try {
-        const res = await fetchOMDb({ imdbId, title, year });
-        // OMDb names the field `imdbRating` ("8.5" or "N/A"); callers expect `rating`.
-        const r = res?.imdbRating;
-        return { rating: r && r !== 'N/A' ? r : null };
+        const params = imdbId ? { imdbId } : { title, year };
+        const { data } = await proxy(params);
+        return { rating: data?.rating || null };
     } catch {
-        return { rating: null };
+        return { rating: null, error: true };
     }
 }
 

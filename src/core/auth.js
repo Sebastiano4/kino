@@ -4,7 +4,10 @@ import {
     signInWithPopup, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-let currentUser = null;
+// undefined = Firebase is still restoring the saved session; null = signed out.
+// onAuth() waits for the first real state so the login gate never flashes
+// (and gets tapped) while a saved session is being restored.
+let currentUser = undefined;
 const subs = new Set();
 
 onAuthStateChanged(auth, (user) => {

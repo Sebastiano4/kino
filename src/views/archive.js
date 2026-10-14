@@ -24,9 +24,10 @@ const DECADE_ROW = [
     { id: '2020', label: '2020s' }, { id: '2010', label: '2010s' },
     { id: '2000', label: '2000s' }, { id: '1990', label: '90s' }, { id: '1980', label: '80s' }, { id: 'classic', label: 'ex_classic' },
 ];
+// First entry is the default sort (label + active state are taken from it).
 const SORT_ROW = [
-    { id: 'rating', label: 'ex_sort_rating' },
     { id: 'seen', label: 'ar_sort_seen' },
+    { id: 'rating', label: 'ex_sort_rating' },
     { id: 'year-new', label: 'ex_sort_year_new' },
     { id: 'year-old', label: 'ex_sort_year_old' },
     { id: 'alpha', label: 'wl_sort_alpha' },
@@ -53,7 +54,7 @@ export const archive = {
 
     async mount(el) {
         let all = [];
-        let q = '', rating = 'all', decade = 'any', genre = 'all', sort = 'rating';
+        let q = '', rating = 'all', decade = 'any', genre = 'all', sort = SORT_ROW[0].id;
 
         el.innerHTML = `
           <div class="ar-view">
@@ -283,7 +284,9 @@ function sortFilms(list, key) {
     const s = [...list];
     switch (key) {
         case 'rating':   return s.sort((a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0));
-        case 'seen':     return s.sort((a, b) => String(b.watchedDate || '').localeCompare(String(a.watchedDate || '')));
+        // watchedDate is YYYY-MM-DD; same-day ties fall back to most recently added.
+        case 'seen':     return s.sort((a, b) => String(b.watchedDate || '').localeCompare(String(a.watchedDate || ''))
+                                               || (Number(b.order) || 0) - (Number(a.order) || 0));
         case 'year-new': return s.sort((a, b) => (Number(filmYear(b)) || 0) - (Number(filmYear(a)) || 0));
         case 'year-old': return s.sort((a, b) => (Number(filmYear(a)) || 9999) - (Number(filmYear(b)) || 9999));
         case 'alpha':    return s.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));

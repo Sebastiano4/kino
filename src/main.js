@@ -67,12 +67,16 @@ router.preload('home');
 router.preload('explore');
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
+const splash    = document.getElementById('splash');
 const gate      = document.getElementById('gate');
 const appEl     = document.getElementById('app');
 const viewEl    = document.getElementById('view');
 const tabsEl    = document.getElementById('tabs');
 
-document.getElementById('loginBtn').addEventListener('click', () => login());
+const loginBtn  = document.getElementById('loginBtn');
+document.getElementById('gateTagline').textContent = i18n.t('gate_tagline');
+loginBtn.textContent = i18n.t('gate_login');
+loginBtn.addEventListener('click', () => login());
 
 document.getElementById('homeBtn').addEventListener('click', () => router.navigate('home'));
 
@@ -128,7 +132,28 @@ document.addEventListener('i18n:change', () => {
 let started    = false;
 let detachSwipe = null;
 
+/** Open the Firestore listener; on failure show a retry screen instead of a blank app. */
+async function startStore() {
+    try {
+        await storeInit();
+        return true;
+    } catch (e) {
+        viewEl.innerHTML = `<div class="empty"><div class="big"></div><div class="err-msg"></div>`
+            + `<button class="btn ex-retry" type="button"></button></div>`;
+        viewEl.querySelector('.big').textContent = i18n.t('store_error');
+        viewEl.querySelector('.err-msg').textContent = e?.message || '';
+        const btn = viewEl.querySelector('button');
+        btn.textContent = i18n.t('retry');
+        btn.addEventListener('click', async () => {
+            viewEl.innerHTML = '';
+            if (await startStore()) router.start();
+        });
+        return false;
+    }
+}
+
 onAuth(async user => {
+    splash.hidden = true;
     if (user) {
         gate.hidden  = true;
         appEl.hidden = false;
@@ -140,9 +165,7 @@ onAuth(async user => {
             router.init(viewEl, { user });
 
             // Start store (opens Firestore listener)
-            await storeInit();
-
-            router.start();
+            if (await startStore()) router.start();
 
             // Part 10: swipe gestures on the view container
             detachSwipe = attachSwipeNav(
@@ -153,6 +176,7 @@ onAuth(async user => {
         }
     } else {
         if (detachSwipe) { detachSwipe(); detachSwipe = null; }
+        storeDestroy();
         appEl.hidden = true;
         gate.hidden  = false;
         started      = false;
