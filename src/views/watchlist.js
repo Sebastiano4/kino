@@ -266,6 +266,7 @@ export const watchlist = {
             openWatchedModal(m, {
                 initialRating: m.rating,
                 initialNotes:  m.notes,
+                initialReviewFile: m.reviewFile,
                 onSave: async data => {
                     if (m.id) { try { await updateMovie(m.id, data); } catch {} }
                     removeMovie(m.id);

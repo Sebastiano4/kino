@@ -1332,9 +1332,36 @@ textarea.filter-input {
 }
 /* HTML iframe */
 .review-preview-frame {
-  width: 100%; height: 340px; border: 0; display: block;
+  width: 100%; height: min(60vh, 520px); border: 0; display: block;
   background: #fff;
 }
+.review-preview-bar { gap: 10px; }
+.review-preview-filename { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-full-btn {
+  appearance: none; border: 1px solid var(--line-h); background: none;
+  border-radius: var(--r-pill); padding: 4px 10px; min-height: 32px;
+  font: 500 .72rem var(--font-ui); color: var(--ink-dim); cursor: pointer;
+}
+.review-full-btn:hover { color: var(--accent-h); border-color: var(--accent); }
+
+/* Full-screen reader */
+.review-reader {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; flex-direction: column; background: var(--bg-0, #000);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.review-reader-bar {
+  display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 16px;
+  background: var(--bg-2); border-bottom: 1px solid var(--line);
+  font-size: .8rem; color: var(--ink-dim);
+}
+.review-reader-close {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  width: 44px; height: 44px; font-size: 1.2rem; color: var(--ink);
+}
+.review-reader-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+.review-reader-frame-txt { flex: 1; max-height: none; margin: 0; overflow-y: auto; }
 /* TXT pre */
 .review-preview-txt {
   margin: 0; padding: 14px 16px;
@@ -2288,6 +2315,19 @@ textarea.filter-input {
 .ov-btn.sec { color: var(--ink-dim); border-color: var(--line-x); background: rgba(255,245,230,.04); }
 .ov-btn.sec:hover { background: rgba(255,245,230,.09); }
 .ex-view .poster-card.ex-added { outline: 1px solid var(--gold-d); }
+/* Your library on TMDB results: "✓ 8.5" (seen) / "Watchlist · Priority" */
+.ex-view .poster-card .ex-own { position: absolute; top: 8px; right: 8px; z-index: 2;
+  max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 600 .6rem/1 var(--font-mono); padding: 4px 7px; border-radius: var(--r-pill);
+  background: rgba(10,9,7,.82); color: var(--ink-dim); border: 1px solid var(--line-x);
+  backdrop-filter: blur(6px); }
+.ex-view .poster-card .ex-own--seen { background: var(--gold-grad); color: var(--gold-ink); border-color: transparent; }
+
+/* Detail modal: watchlist tier picker */
+.dm-tier-group { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dm-tier-label { font: 500 .7rem/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-mute); margin-right: 4px; }
+.dm-tier-btn { padding: 8px 16px; min-height: 40px; }
 
 /* ── ARCHIVE grid + cells ── */
 .ar-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 4px; padding: 4px var(--gutter) 80px; margin-top: 18px; }

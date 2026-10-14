@@ -13,7 +13,10 @@ import { movieDetails, posterUrl, posterImg, watchProviders } from '../services/
 import { imdbRating, imdbFull } from '../services/omdb.js';
 import { addMovie, updateMovie } from '../data/repo.js';
 import { openWatchedModal } from './watched.js';
+import { reviewPreview } from './reviewFile.js';
 import i18n from '../core/i18n.js';
+
+const WL_TIERS = ['priority', 'standard', 'backlog'];
 
 // ── Known streaming services (for priority ordering + display names) ───────
 const KNOWN_PROVIDERS = {
@@ -136,6 +139,8 @@ export async function openDetail(movie, options = {}) {
     // ── Render modal shell ────────────────────────────────────────────────────
     const modal = overlay.querySelector('.modal');
     modal.innerHTML = _renderModal(d, options);
+    // Attached review file (HTML/TXT) — built as DOM so its content stays sandboxed.
+    modal.querySelector('#dmReview')?.append(reviewPreview(d.reviewFile));
     // Backdrop glow keyed to director accent
     const acc = _directorAccent(d.director);
     overlay.style.setProperty('--modal-acc', acc);
@@ -177,15 +182,39 @@ export async function openDetail(movie, options = {}) {
     const tmdbId = d.tmdbId || d.id;
     if (tmdbId) _appendProviders(modal, tmdbId);
 
-    // ── Add to watchlist ──────────────────────────────────────────────────────
-    modal.querySelector('[data-action="add-wl"]')?.addEventListener('click', async btn_ => {
-        const btn = modal.querySelector('[data-action="add-wl"]');
-        btn.disabled = true; btn.textContent = i18n.t('saved');
-        try {
-            await addMovie(_enrichedPayload(d, true));
-            if (options.onAdd) options.onAdd(d);
-        } catch { btn.textContent = i18n.t('error'); btn.disabled = false; }
+    // ── Watchlist tier: add in the chosen tier, or move an existing film ────────
+    const tierBtns = [...modal.querySelectorAll('.dm-tier-btn')];
+    const markTier = t => tierBtns.forEach(b => {
+        const on = b.dataset.tier === t;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', String(on));
     });
+    tierBtns.forEach(btn => btn.addEventListener('click', async () => {
+        const tier = btn.dataset.tier;
+        const prev = d.isWatchlist ? (d.tier || 'standard') : null;
+        if (tier === prev) return;
+        markTier(tier);
+        tierBtns.forEach(b => { b.disabled = true; });
+        try {
+            if (d.id) {
+                await updateMovie(d.id, { tier });
+                d.tier = tier;
+                if (options.onUpdate) options.onUpdate(d);
+            } else {
+                // After this the film exists: further taps move it between tiers.
+                d.id = await addMovie({ ..._enrichedPayload(d, true), tier });
+                Object.assign(d, { isWatchlist: true, tier });
+                if (options.onAdd) options.onAdd(d);
+            }
+        } catch {
+            markTier(prev);
+            const label = btn.textContent;
+            btn.textContent = i18n.t('error');
+            setTimeout(() => { btn.textContent = label; }, 2000);
+        } finally {
+            tierBtns.forEach(b => { b.disabled = false; });
+        }
+    }));
 
     // ── Mark as watched ───────────────────────────────────────────────────────
     modal.querySelector('[data-action="watch"]')?.addEventListener('click', () => {
@@ -194,6 +223,7 @@ export async function openDetail(movie, options = {}) {
             initialDate:    d.watchedDate,
             initialNotes:   d.notes,
             initialRewatch: d.isRewatch,
+            initialReviewFile: d.reviewFile,
             onSave: async data => {
                 if (d.id) {
                     await updateMovie(d.id, data);
@@ -364,13 +394,24 @@ function _renderModal(d, options = {}) {
     let editBtn = '', favBtn = '';
     if (mode === 'explore') {
         editBtn = `<button class="dm-action-btn" data-action="watch">${i18n.t('mark_watched')}</button>`;
-        favBtn  = `<button class="dm-action-btn" data-action="add-wl">${i18n.t('add_watchlist')}</button>`;
     } else if (mode === 'watchlist') {
         editBtn = `<button class="dm-action-btn" data-action="watch">${i18n.t('mark_watched')}</button>`;
         favBtn  = `<button class="dm-action-btn${d.isFavorite ? ' active' : ''}" data-action="fav">&#9825; ${i18n.t('favorites')}</button>`;
     } else {
         editBtn = `<button class="dm-action-btn" data-action="watch">${i18n.t('edit_vote')}</button>`;
         favBtn  = `<button class="dm-action-btn" data-action="fav">&#9825; ${i18n.t('favorites')}</button>`;
+    }
+
+    // Watchlist tier picker: explore = add straight into a tier; watchlist = move.
+    let tierGroup = '';
+    if (mode === 'explore' || mode === 'watchlist') {
+        const cur = mode === 'watchlist' ? (WL_TIERS.includes(d.tier) ? d.tier : 'standard') : null;
+        tierGroup = `
+          <div class="dm-tier-group" role="group" aria-label="${esc(i18n.t('wl_tier'))}">
+            <span class="dm-tier-label">${esc(i18n.t(mode === 'explore' ? 'add_watchlist' : 'wl_tier'))}</span>
+            ${WL_TIERS.map(t => `<button type="button" class="dm-action-btn dm-tier-btn${t === cur ? ' active' : ''}"
+                data-tier="${t}" aria-pressed="${t === cur}">${esc(i18n.t('wl_tier_' + t))}</button>`).join('')}
+          </div>`;
     }
 
     // ── ELO stats ─────────────────────────────────────────────────────────────
@@ -434,6 +475,7 @@ function _renderModal(d, options = {}) {
 
       <div class="dm-actions modal-actions">
         ${trailerBtn}${editBtn}${favBtn}
+        ${tierGroup}
       </div>
 
       ${d.plot ? `
@@ -446,6 +488,12 @@ function _renderModal(d, options = {}) {
       <div class="dm-section">
         <div class="dm-section-label">${i18n.t('your_notes').toUpperCase()}</div>
         <p class="dm-synopsis" style="font-style:italic">&ldquo;${esc(d.notes)}&rdquo;</p>
+      </div>` : ''}
+
+      ${d.reviewFile ? `
+      <div class="dm-section">
+        <div class="dm-section-label">${i18n.t('review_mine').toUpperCase()}</div>
+        <div class="review-preview" id="dmReview"></div>
       </div>` : ''}
 
       <div class="dm-details">
