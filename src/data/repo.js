@@ -5,7 +5,18 @@ import {
     collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc,
     setDoc, serverTimestamp, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-import { queueOperation, getPending, clearOperation } from './offline.js';
+import { getPending, clearOperation } from './offline.js';
+
+/**
+ * Offline writes are handled by Firestore's persistent cache (core/firebase.js):
+ * the SDK stores them locally and syncs on reconnect, but its promises only
+ * settle on server ack. Offline we return at once instead of hanging callers.
+ */
+function commit(p) {
+    if (navigator.onLine) return p;
+    p.catch(e => console.warn('[repo] offline write rejected on sync', e));
+    return Promise.resolve();
+}
 
 function uid() {
     const u = getUser();
@@ -68,47 +79,28 @@ export async function addMovie(data) {
     // the Firestore document id. A stored `id` would shadow it on read and
     // break every later update (not-found). Imports often carry a stale id.
     const { id: _omitId, ...clean } = data || {};
-    try {
-        const ref = await addDoc(moviesCol(), {
-            ...clean, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), order: Date.now()
-        });
-        return ref.id;
-    } catch (e) {
-        if (!navigator.onLine) {
-            await queueOperation({ op: 'add', col: 'movies', data: clean });
-            return `offline-${Date.now()}`;
-        }
-        throw e;
-    }
+    // Id generated client-side so it is real even when the write is offline.
+    const ref = doc(moviesCol());
+    await commit(setDoc(ref, {
+        ...clean, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), order: Date.now()
+    }));
+    return ref.id;
 }
 
 export async function updateMovie(id, patch) {
-    try {
-        await updateDoc(movieDoc(id), { ...patch, updatedAt: serverTimestamp() });
-    } catch (e) {
-        if (!navigator.onLine) {
-            await queueOperation({ op: 'update', col: 'movies', docId: id, data: patch });
-            return;
-        }
-        throw e;
-    }
+    await commit(updateDoc(movieDoc(id), { ...patch, updatedAt: serverTimestamp() }));
 }
 
 export async function deleteMovie(id) {
-    try {
-        await deleteDoc(movieDoc(id));
-    } catch (e) {
-        if (!navigator.onLine) {
-            await queueOperation({ op: 'delete', col: 'movies', docId: id });
-            return;
-        }
-        throw e;
-    }
+    await commit(deleteDoc(movieDoc(id)));
 }
 
-export function watchMovies(cb) {
+export function watchMovies(cb, onError) {
     return onSnapshot(moviesCol(), snap => {
         cb(snap.docs.map(d => normalizeMovie({ ...d.data(), id: d.id })));
+    }, err => {
+        console.error('[repo] movies listener failed', err);
+        onError?.(err);
     });
 }
 
@@ -125,16 +117,9 @@ export async function saveProfile(patch) {
 
 /** Match history (Elo battles). */
 export async function addMatch(data) {
-    try {
-        const ref = await addDoc(matchesCol(), { ...data, createdAt: serverTimestamp() });
-        return ref.id;
-    } catch (e) {
-        if (!navigator.onLine) {
-            await queueOperation({ op: 'add', col: 'matches', data });
-            return;
-        }
-        throw e;
-    }
+    const ref = doc(matchesCol());
+    await commit(setDoc(ref, { ...data, createdAt: serverTimestamp() }));
+    return ref.id;
 }
 
 export async function getMatches() {
@@ -149,7 +134,10 @@ export async function deleteMatch(id) {
     } catch {}
 }
 
-/** Flush offline queue to Firestore. */
+/**
+ * Legacy: drain writes left in the old hand-made IndexedDB queue (offline.js)
+ * by earlier versions. New offline writes go through Firestore's own cache.
+ */
 export async function flushOfflineQueue() {
     if (!navigator.onLine) return;
     let pending;
@@ -166,13 +154,6 @@ export async function flushOfflineQueue() {
             await clearOperation(op.id);
         } catch { break; }
     }
-}
-
-if (typeof window !== 'undefined') {
-    window.addEventListener('online', () => { try { flushOfflineQueue(); } catch {} });
-    navigator.serviceWorker?.addEventListener('message', e => {
-        if (e.data?.type === 'flush-offline') flushOfflineQueue().catch(() => {});
-    });
 }
 
 /* ---- export / import ---- */

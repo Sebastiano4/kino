@@ -74,6 +74,9 @@ export const explore = {
         let sort = 'popularity.desc';
         let mode = 'discover';
         let currentPage = 0, totalPages = 1, loading = false;
+        // Set on a failed fetch: stops the sentinel from retrying in a loop
+        // (skeleton pushes it out of view, the error pulls it back in).
+        let failed = false;
 
         el.innerHTML = `
           <div class="ex-view">
@@ -127,10 +130,21 @@ export const explore = {
             return p;
         };
 
-        const reset = () => { currentPage = 0; totalPages = 1; grid.innerHTML = ''; };
+        const reset = () => { currentPage = 0; totalPages = 1; failed = false; grid.innerHTML = ''; };
+
+        const showError = (target, e) => {
+            target.innerHTML = `<div class="empty"><div class="big">${esc(i18n.t('tmdb_error'))}</div>`
+                + `<div>${esc(e.message)}</div>`
+                + `<button class="btn ex-retry">${esc(i18n.t('retry'))}</button></div>`;
+            target.querySelector('.ex-retry').addEventListener('click', () => {
+                failed = false;
+                target.innerHTML = '';
+                loadNext();
+            });
+        };
 
         const loadNext = async () => {
-            if (loading || currentPage >= totalPages) return;
+            if (loading || failed || currentPage >= totalPages) return;
             loading = true;
             const isFirst = currentPage === 0;
             if (isFirst) skeleton(grid, 12);
@@ -150,8 +164,9 @@ export const explore = {
                     appendCards(grid, results);
                 }
             } catch (e) {
-                if (isFirst) grid.innerHTML = `<div class="empty"><div class="big">${esc(i18n.t('tmdb_error'))}</div>${esc(e.message)}</div>`;
-                sentinel.innerHTML = '';
+                failed = true;
+                if (isFirst) { sentinel.innerHTML = ''; showError(grid, e); }
+                else showError(sentinel, e);
             }
             loading = false;
         };
@@ -232,11 +247,20 @@ export const explore = {
         }, { rootMargin: '400px' });
         this._observer.observe(sentinel);
 
+        ratingObserver = new IntersectionObserver(entries => {
+            entries.forEach(en => {
+                if (!en.isIntersecting) return;
+                ratingObserver.unobserve(en.target);
+                loadRating(en.target);
+            });
+        }, { rootMargin: '200px' });
+
         rerun();
     },
 
     unmount() {
         if (this._observer) { this._observer.disconnect(); this._observer = null; }
+        if (ratingObserver) { ratingObserver.disconnect(); ratingObserver = null; }
         if (this._docClick) { document.removeEventListener('click', this._docClick); this._docClick = null; }
     },
 };
@@ -315,29 +339,53 @@ function appendCards(grid, results) {
             </div>
           </div>`;
         grid.appendChild(card);
+        // IMDb rating is fetched only once the card is near the viewport.
+        ratingObserver?.observe(card);
+    });
+}
 
-        // Lazy IMDb rating pill
-        movieDetails(r.tmdbId, 'external_ids')
-            .then(d => imdbRating({ imdbId: d?.external_ids?.imdb_id || null, title: r.title, year: r.year }))
-            .catch(() => imdbRating({ title: r.title, year: r.year }))
-            .then(({ rating } = {}) => {
-                const pill = card.querySelector('.imdb-pill');
-                const ovImdb = card.querySelector('.ov-imdb');
-                const ovSep = card.querySelector('.ov-imdb-sep');
-                if (rating) {
-                    if (pill) {
-                        pill.textContent = `IMDb ${rating}`;
-                        const n = parseFloat(rating);
-                        pill.classList.toggle('imdb-high', n >= 7);
-                        pill.classList.toggle('imdb-low', n < 5);
-                    }
-                    if (ovImdb) {
-                        ovImdb.textContent = `IMDb ${rating}`;
-                        ovImdb.hidden = false;
-                        if (ovSep) ovSep.hidden = false;
-                    }
-                } else if (pill) pill.remove();
-            });
+// ── Lazy IMDb rating pill ────────────────────────────────────────────────────
+// Each rating costs a TMDB call (imdb id) + an OMDb call, so: only for cards
+// that scroll into view, and cached per tmdbId on the device for a week.
+let ratingObserver = null;
+
+const RATING_TTL = 7 * 24 * 60 * 60 * 1000;
+const ratingKey  = tmdbId => `kino-imdb-${tmdbId}`;
+
+async function filmRating(r) {
+    try {
+        const c = JSON.parse(localStorage.getItem(ratingKey(r.tmdbId)));
+        if (c && Date.now() - c.ts < RATING_TTL) return c.rating;
+    } catch {}
+    const d = await movieDetails(r.tmdbId, 'external_ids').catch(() => null);
+    const { rating, error } = await imdbRating({
+        imdbId: d?.external_ids?.imdb_id || null, title: r.title, year: r.year,
+    });
+    // Don't cache failures: a network blip must not hide the rating for a week.
+    if (!error) {
+        try { localStorage.setItem(ratingKey(r.tmdbId), JSON.stringify({ ts: Date.now(), rating })); } catch {}
+    }
+    return rating;
+}
+
+function loadRating(card) {
+    filmRating(card._film).then(rating => {
+        const pill = card.querySelector('.imdb-pill');
+        const ovImdb = card.querySelector('.ov-imdb');
+        const ovSep = card.querySelector('.ov-imdb-sep');
+        if (rating) {
+            if (pill) {
+                pill.textContent = `IMDb ${rating}`;
+                const n = parseFloat(rating);
+                pill.classList.toggle('imdb-high', n >= 7);
+                pill.classList.toggle('imdb-low', n < 5);
+            }
+            if (ovImdb) {
+                ovImdb.textContent = `IMDb ${rating}`;
+                ovImdb.hidden = false;
+                if (ovSep) ovSep.hidden = false;
+            }
+        } else if (pill) pill.remove();
     });
 }
 

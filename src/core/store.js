@@ -44,7 +44,7 @@ export function init() {
     if (_ready) return Promise.resolve(getState());
 
     return new Promise((resolve, reject) => {
-        _resolvers.push(resolve);
+        _resolvers.push({ resolve, reject });
 
         // Only open the Firestore listener once
         if (_unsubscribe) return;
@@ -58,9 +58,15 @@ export function init() {
             if (!_ready) {
                 _ready = true;
                 const snap = getState();
-                _resolvers.forEach(r => r(snap));
+                _resolvers.forEach(r => r.resolve(snap));
                 _resolvers = [];
             }
+        }, err => {
+            // Firestore closes a listener after an error: drop the handle so
+            // the next init() reopens it, and fail callers still waiting.
+            _unsubscribe = null;
+            _resolvers.forEach(r => r.reject(err));
+            _resolvers = [];
         });
     });
 }
