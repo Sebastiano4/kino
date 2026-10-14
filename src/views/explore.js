@@ -13,7 +13,7 @@ import { searchMovies as tmdbSearch, discoverMovies, posterUrl, movieDetails } f
 import { imdbRating } from '../services/omdb.js';
 import { openDetail } from '../components/detail.js';
 import { addMovie, updateMovie } from '../data/repo.js';
-import { getState, appendMovie, patchMovie } from '../core/store.js';
+import { getState, subscribe, appendMovie, patchMovie } from '../core/store.js';
 import { showToast } from '../components/toast.js';
 import i18n from '../core/i18n.js';
 
@@ -235,11 +235,18 @@ export const explore = {
             if (!r) return;
             if (actEl) {
                 e.stopPropagation();
-                quickAdd(r, actEl.dataset.act === 'priority' ? 'priority' : 'standard', cardEl);
+                quickAdd(r, actEl.dataset.act, cardEl);
                 return;
             }
-            openDetail({ tmdbId: r.tmdbId, title: r.title, year: r.year, poster: r.poster, plot: r.plot }, { mode: 'explore' });
+            // A film already in your library opens with your data (rating, date,
+            // notes, review, tier) and the matching archive / watchlist actions.
+            const mine = ownedFilm(r.tmdbId);
+            if (mine) openDetail(mine, { mode: mine.isWatchlist ? 'watchlist' : 'archive' });
+            else openDetail({ tmdbId: r.tmdbId, title: r.title, year: r.year, poster: r.poster, plot: r.plot }, { mode: 'explore' });
         });
+
+        // Keep the "seen / in watchlist" badges in sync with the library.
+        this._unsub = subscribe('explore', () => grid.querySelectorAll('.poster-card').forEach(paintOwned));
 
         // ── Infinite scroll ───────────────────────────────────────────────────
         this._observer = new IntersectionObserver(entries => {
@@ -261,15 +268,45 @@ export const explore = {
     unmount() {
         if (this._observer) { this._observer.disconnect(); this._observer = null; }
         if (ratingObserver) { ratingObserver.disconnect(); ratingObserver = null; }
+        if (this._unsub) { this._unsub(); this._unsub = null; }
         if (this._docClick) { document.removeEventListener('click', this._docClick); this._docClick = null; }
     },
 };
 
+// ── Your library ↔ TMDB results ──────────────────────────────────────────────
+const WL_TIERS = ['priority', 'standard', 'backlog'];
+
+/** Your copy of a film (watched wins over a stray watchlist duplicate), or undefined. */
+function ownedFilm(tmdbId) {
+    const mine = (getState().movies || []).filter(m => String(m.tmdbId) === String(tmdbId));
+    return mine.find(m => !m.isWatchlist) || mine[0];
+}
+
+/** Badge on a poster card: "✓ 8.5" if seen, "Watchlist · Priority" if listed. */
+function paintOwned(card) {
+    const r = card._film;
+    if (!r) return;
+    const mine = ownedFilm(r.tmdbId);
+    let badge = card.querySelector('.ex-own');
+    if (!mine) { badge?.remove(); return; }
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'ex-own';
+        card.appendChild(badge);
+    }
+    const seen = !mine.isWatchlist;
+    badge.classList.toggle('ex-own--seen', seen);
+    badge.textContent = seen
+        ? `✓ ${mine.rating != null ? Number(mine.rating).toFixed(1) : i18n.t('ex_seen')}`
+        : `${i18n.t('status_watchlist')} · ${i18n.t('wl_tier_' + (WL_TIERS.includes(mine.tier) ? mine.tier : 'standard'))}`;
+}
+
 // ── Quick-add to watchlist ───────────────────────────────────────────────────
 function quickAdd(r, tier, cardEl) {
-    const movies = getState().movies || [];
-    if (movies.some(m => String(m.tmdbId) === String(r.tmdbId) && m.isWatchlist)) {
-        showToast(i18n.t('ex_already_wl'), { tone: 'neutral' });
+    if (!WL_TIERS.includes(tier)) tier = 'standard';
+    const mine = ownedFilm(r.tmdbId);
+    if (mine) {
+        showToast(i18n.t(mine.isWatchlist ? 'ex_already_wl' : 'ex_already_seen'), { tone: 'neutral' });
         return;
     }
     const genres = (r.genreIds || []).map(id => GENRE_NAMES[id]).filter(Boolean);
@@ -294,8 +331,7 @@ function quickAdd(r, tier, cardEl) {
             if (Object.keys(patch).length) { patchMovie(id, patch); updateMovie(id, patch).catch(() => {}); }
         }).catch(() => {});
     }).catch(() => {});
-    const label = tier === 'priority' ? i18n.t('wl_tier_priority') : i18n.t('status_watchlist');
-    showToast(`${esc(r.title)} → ${label}`, { tone: 'neutral' });
+    showToast(`${esc(r.title)} → ${i18n.t('wl_tier_' + tier)}`, { tone: 'neutral' });
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
@@ -335,10 +371,12 @@ function appendCards(grid, results) {
             </div>
             <div class="ov-actions">
               <button class="ov-btn primary" data-act="priority">🎯 ${esc(i18n.t('wl_tier_priority'))}</button>
-              <button class="ov-btn sec" data-act="watchlist">+ ${esc(i18n.t('status_watchlist'))}</button>
+              <button class="ov-btn sec" data-act="standard">+ ${esc(i18n.t('wl_tier_standard'))}</button>
+              <button class="ov-btn sec" data-act="backlog">+ ${esc(i18n.t('wl_tier_backlog'))}</button>
             </div>
           </div>`;
         grid.appendChild(card);
+        paintOwned(card);
         // IMDb rating is fetched only once the card is near the viewport.
         ratingObserver?.observe(card);
     });

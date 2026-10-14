@@ -2315,6 +2315,19 @@ textarea.filter-input {
 .ov-btn.sec { color: var(--ink-dim); border-color: var(--line-x); background: rgba(255,245,230,.04); }
 .ov-btn.sec:hover { background: rgba(255,245,230,.09); }
 .ex-view .poster-card.ex-added { outline: 1px solid var(--gold-d); }
+/* Your library on TMDB results: "✓ 8.5" (seen) / "Watchlist · Priority" */
+.ex-view .poster-card .ex-own { position: absolute; top: 8px; right: 8px; z-index: 2;
+  max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 600 .6rem/1 var(--font-mono); padding: 4px 7px; border-radius: var(--r-pill);
+  background: rgba(10,9,7,.82); color: var(--ink-dim); border: 1px solid var(--line-x);
+  backdrop-filter: blur(6px); }
+.ex-view .poster-card .ex-own--seen { background: var(--gold-grad); color: var(--gold-ink); border-color: transparent; }
+
+/* Detail modal: watchlist tier picker */
+.dm-tier-group { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dm-tier-label { font: 500 .7rem/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-mute); margin-right: 4px; }
+.dm-tier-btn { padding: 8px 16px; min-height: 40px; }
 
 /* ── ARCHIVE grid + cells ── */
 .ar-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 4px; padding: 4px var(--gutter) 80px; margin-top: 18px; }
