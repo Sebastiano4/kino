@@ -80,13 +80,25 @@ document.getElementById('homeBtn').addEventListener('click', () => router.naviga
 document.getElementById('settingsBtn').addEventListener('click', () => router.navigate('settings'));
 
 // ── Tab bar ───────────────────────────────────────────────────────────────
+// Stroke icons shown only in the phone bottom bar (≤767px); desktop keeps
+// text-only top tabs. Emoji icons in the registry stay unused here.
+const TAB_ICONS = {
+    explore:   '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+    archive:   '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5M16 4v5"/>',
+    watchlist: '<path d="M6 3h12v18l-6-4-6 4z"/>',
+    battle:    '<path d="M4 20L14 10M14 4l6 6M20 20L10 10M10 4L4 10"/>',
+    vault:     '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+};
+
 function buildTabs() {
     tabsEl.innerHTML = '';
     router.listViews().filter(v => !v.hidden).forEach(v => {
         const b = document.createElement('button');
+        b.type         = 'button';
         b.className    = 'kino-tab';
         b.dataset.id   = v.id;
-        b.textContent  = v.label;
+        b.innerHTML    = `<span class="kino-tab-ico" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TAB_ICONS[v.id] || ''}</svg></span><span class="kino-tab-label"></span>`;
+        b.querySelector('.kino-tab-label').textContent = v.label;
 
         // Navigate on click
         b.addEventListener('click', () => router.navigate(v.id));
@@ -100,8 +112,11 @@ function buildTabs() {
 }
 
 document.addEventListener('view:change', e => {
-    tabsEl.querySelectorAll('.kino-tab').forEach(t =>
-        t.classList.toggle('active', t.dataset.id === e.detail.id));
+    tabsEl.querySelectorAll('.kino-tab').forEach(t => {
+        const on = t.dataset.id === e.detail.id;
+        t.classList.toggle('active', on);
+        if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+    });
 });
 
 // Re-render active view on language change
