@@ -116,6 +116,12 @@ function _renderCollection(body, rated, matches, viewMode, activeBadge, searchQu
 
     const insights = _collectionInsights(rated, matches);
 
+    // Battles/wins per movie, computed from the real match history (the `matches`
+    // collection) rather than the movie doc's own `eloMatches` counter — that
+    // counter can be missing or stale (e.g. for imported/legacy records), while
+    // every battle actually played through the app has a match record.
+    const statsByMovie = _battleStatsByMovie(matches);
+
     body.innerHTML = `
       <div class="vault-controls">
         <div class="vault-view-modes">
@@ -148,7 +154,7 @@ function _renderCollection(body, rated, matches, viewMode, activeBadge, searchQu
         </div>
       </div>
       ${filtered.length ? `<div class="vault-collection vault-collection--${viewMode}">
-        ${filtered.map(m => _collectionCard(m, viewMode)).join('')}
+        ${filtered.map(m => _collectionCard(m, viewMode, statsByMovie[m.id])).join('')}
       </div>` : `<div class="vault-empty">${i18n.t('vault_empty')}</div>`}`;
 
     body.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => onControl({ viewMode: btn.dataset.view })));
@@ -180,13 +186,15 @@ function _renderCollection(body, rated, matches, viewMode, activeBadge, searchQu
     }));
 }
 
-function _collectionCard(m, viewMode) {
+function _collectionCard(m, viewMode, stats) {
     const poster = m.poster || '';
     const meta = [m.year, m.director, m.runtime ? `${m.runtime} min` : ''].filter(Boolean).join(' • ');
     const badge = m._badge;
     const badgeChip = badge
         ? `<span class="vault-badge-chip" style="--tier-color:${badge.var}" title="${badge.label}">${badge.label}</span>`
         : '';
+    const battles = stats?.battles || 0;
+    const winRate = battles ? `${Math.round((stats.wins / battles) * 100)}%` : '—';
     return `<article class="vault-movie-card" data-movie-id="${esc(m.id)}">
       <div class="vault-movie-poster">
         ${badgeChip}
@@ -204,10 +212,30 @@ function _collectionCard(m, viewMode) {
           <span>Elo ${seedElo(m)}</span>
           <span>IMDb ${m.imdbRating || '—'}</span>
           <span>Your ${m.rating || '—'}</span>
-          <span>${m.eloMatches || 0} battles</span>
+          <span>${battles} battles</span>
+          <span>${winRate} win rate</span>
         </div>` : ''}
       </div>
     </article>`;
+}
+
+/**
+ * Aggregate per-movie battle counts and wins from real match records
+ * (the `matches` collection — one doc per decided duel), keyed by movie id.
+ * This is the source of truth: unlike the movie doc's own `eloMatches`
+ * field, it can't drift out of sync and covers every battle ever fought.
+ */
+function _battleStatsByMovie(matches) {
+    const map = {};
+    (matches || []).forEach(match => {
+        const { movieAId, movieBId, winnerId } = match;
+        [movieAId, movieBId].filter(Boolean).forEach(id => {
+            const s = map[id] || (map[id] = { battles: 0, wins: 0 });
+            s.battles++;
+            if (winnerId === id) s.wins++;
+        });
+    });
+    return map;
 }
 
 function _collectionInsights(rated, matches) {

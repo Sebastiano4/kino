@@ -112,6 +112,24 @@ export async function openDetail(movie, options = {}) {
                 trailerKey:       trailer?.key || null,
                 _posterPath:      tmdb.poster_path || null,
             });
+
+            // Persist the freshly-fetched enrichment (IMDb rating, director, genres, …)
+            // back onto the movie's own record. Without this, fields fetched here only
+            // ever lived in this modal's local `d` copy — other views (Vault, Archive,
+            // CSV export) read the stored doc and never saw them, so e.g. the IMDb
+            // rating always showed as missing until re-opened.
+            if (d.id) {
+                const patch = {
+                    director: d.director, cast: d.cast, genres: d.genres, genreIds: d.genreIds,
+                    runtime: d.runtime, originalLanguage: d.originalLanguage, countries: d.countries,
+                    releaseDate: d.releaseDate, plot: d.plot, backdropPath: d.backdropPath,
+                    popularity: d.popularity, imdbId: d.imdbId, imdbRating: d.imdbRating,
+                    imdbVotes: d.imdbVotes, rtScore: d.rtScore, metascore: d.metascore,
+                    tmdbRating: d.tmdbRating, posterPath: d._posterPath,
+                };
+                Object.keys(patch).forEach(k => { if (patch[k] == null) delete patch[k]; });
+                if (Object.keys(patch).length) updateMovie(d.id, patch).catch(() => {});
+            }
         }
     } catch {}
 

@@ -126,7 +126,7 @@
 }
 .carousel::-webkit-scrollbar { display: none; }
 .carousel-card {
-  flex: 0 0 140px; scroll-snap-align: start; cursor: pointer;
+  flex: 0 0 140px; min-width: 0; max-width: 140px; scroll-snap-align: start; cursor: pointer;
 }
 .carousel-card .poster {
   aspect-ratio: 2/3; border-radius: var(--r-md); overflow: hidden;
@@ -2176,8 +2176,16 @@ textarea.filter-input {
 /* responsive */
 @media (max-width:760px) {
   .wl-page .poster-grid { grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); }
-  .wl-page .tonight-right { display:none; }
   .wl-page .tonight-body { border-left:0; }
+  /* Was `display:none` — that dropped the "Mark as watched" / "Not tonight" actions
+     entirely on phones (all phones are ≤760px). Keep them, laid out as a full-width
+     row instead of a right-hand column. */
+  .wl-page .tonight-right {
+    width: 100%; min-width: 0; border-left: 0; border-top: 1px solid var(--line);
+    flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start;
+    gap: 10px; padding: 14px 20px;
+  }
+  .wl-page .tonight-idx { width: 100%; text-align: left; order: 3; }
 }
 @media (max-width:560px) {
   .wl-page .tonight-inner { flex-direction:column; min-height:0; }
