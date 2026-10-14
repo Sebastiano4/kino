@@ -13,6 +13,7 @@ import { movieDetails, posterUrl, posterImg, watchProviders } from '../services/
 import { imdbRating, imdbFull } from '../services/omdb.js';
 import { addMovie, updateMovie } from '../data/repo.js';
 import { openWatchedModal } from './watched.js';
+import { reviewPreview } from './reviewFile.js';
 import i18n from '../core/i18n.js';
 
 // ── Known streaming services (for priority ordering + display names) ───────
@@ -136,6 +137,8 @@ export async function openDetail(movie, options = {}) {
     // ── Render modal shell ────────────────────────────────────────────────────
     const modal = overlay.querySelector('.modal');
     modal.innerHTML = _renderModal(d, options);
+    // Attached review file (HTML/TXT) — built as DOM so its content stays sandboxed.
+    modal.querySelector('#dmReview')?.append(reviewPreview(d.reviewFile));
     // Backdrop glow keyed to director accent
     const acc = _directorAccent(d.director);
     overlay.style.setProperty('--modal-acc', acc);
@@ -194,6 +197,7 @@ export async function openDetail(movie, options = {}) {
             initialDate:    d.watchedDate,
             initialNotes:   d.notes,
             initialRewatch: d.isRewatch,
+            initialReviewFile: d.reviewFile,
             onSave: async data => {
                 if (d.id) {
                     await updateMovie(d.id, data);
@@ -446,6 +450,12 @@ function _renderModal(d, options = {}) {
       <div class="dm-section">
         <div class="dm-section-label">${i18n.t('your_notes').toUpperCase()}</div>
         <p class="dm-synopsis" style="font-style:italic">&ldquo;${esc(d.notes)}&rdquo;</p>
+      </div>` : ''}
+
+      ${d.reviewFile ? `
+      <div class="dm-section">
+        <div class="dm-section-label">${i18n.t('review_mine').toUpperCase()}</div>
+        <div class="review-preview" id="dmReview"></div>
       </div>` : ''}
 
       <div class="dm-details">

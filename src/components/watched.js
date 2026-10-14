@@ -10,6 +10,7 @@
  */
 
 import { analyzeReview } from '../services/ai.js';
+import { readReviewFile, reviewPreview } from './reviewFile.js';
 import i18n from '../core/i18n.js';
 
 const SENTIMENT_EMOJI = { positive: '😊', neutral: '😐', negative: '😞', mixed: '🤔' };
@@ -73,10 +74,10 @@ export function openWatchedModal(movie, options = {}) {
                       ondrop="event.preventDefault()">${esc(init.notes)}</textarea>
             <!-- Drop hint overlay on the textarea -->
             <div class="review-drop-hint" id="wDropHint">
-              <input type="file" id="wUploadInput" accept=".pdf,.html,.htm,.txt" style="display:none">
+              <input type="file" id="wUploadInput" accept=".html,.htm,.txt" style="display:none">
               <span>📄</span>
               <span>Drop a file here</span>
-              <span class="review-upload-hint">PDF · HTML · TXT</span>
+              <span class="review-upload-hint">HTML · TXT</span>
               <button type="button" class="review-upload-browse" id="wBrowse">or browse</button>
             </div>
             <!-- Preview (shown after file load, replaces textarea) -->
@@ -137,12 +138,12 @@ export function openWatchedModal(movie, options = {}) {
     incBtn.addEventListener('click', () => stepRating(0.5));
     syncRating();
 
-    // ── File preview (PDF / HTML / TXT inline, replaces textarea) ───────────
+    // ── Review file (HTML / TXT, replaces textarea; saved as movie.reviewFile) ─
     const wNotes      = overlay.querySelector('#wNotes');
     const wPreview    = overlay.querySelector('#wPreview');
     const wRemoveFile = overlay.querySelector('#wRemoveFile');
     const uploadInput = overlay.querySelector('#wUploadInput');
-    let   _blobUrl    = null; // track created blob URLs for cleanup
+    let   _reviewFile = options.initialReviewFile || null;
 
     overlay.querySelector('#wBrowse').addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', () => {
@@ -163,8 +164,15 @@ export function openWatchedModal(movie, options = {}) {
         _clearPreview();
     });
 
+    function _showFile(rf) {
+        wNotes.hidden      = true;
+        wPreview.hidden    = false;
+        wRemoveFile.hidden = false;
+        wPreview.replaceChildren(reviewPreview(rf));
+    }
+
     function _clearPreview() {
-        if (_blobUrl) { URL.revokeObjectURL(_blobUrl); _blobUrl = null; }
+        _reviewFile = null;
         wPreview.hidden = true;
         wPreview.innerHTML = '';
         wNotes.hidden = false;
@@ -172,50 +180,20 @@ export function openWatchedModal(movie, options = {}) {
     }
 
     async function _handleFile(file) {
-        const ext  = file.name.split('.').pop().toLowerCase();
-        const name = file.name;
-
-        // Show loading state
-        wNotes.hidden   = true;
-        wPreview.hidden = false;
-        wPreview.innerHTML = `<div class="review-preview-loading">Loading <em>${esc(name)}</em>…</div>`;
-        wRemoveFile.hidden = false;
-
         try {
-            if (ext === 'pdf') {
-                _blobUrl = URL.createObjectURL(file);
-                wPreview.innerHTML = `
-                  <div class="review-preview-bar">
-                    <span class="review-preview-filename">📄 ${esc(name)}</span>
-                  </div>
-                  <embed class="review-preview-embed" src="${_blobUrl}#toolbar=0&navpanes=0" type="application/pdf">`;
-            } else if (ext === 'html' || ext === 'htm') {
-                const raw = await file.text();
-                // Sanitise: remove script/style tags, keep layout
-                const clean = raw.replace(/<script[\s\S]*?<\/script>/gi, '')
-                                  .replace(/<style[\s\S]*?<\/style>/gi, '');
-                wPreview.innerHTML = `
-                  <div class="review-preview-bar">
-                    <span class="review-preview-filename">🌐 ${esc(name)}</span>
-                  </div>
-                  <iframe class="review-preview-frame" sandbox="allow-same-origin"
-                          srcdoc="${clean.replace(/"/g, '&quot;')}"></iframe>`;
-            } else if (ext === 'txt') {
-                const text = await file.text();
-                wPreview.innerHTML = `
-                  <div class="review-preview-bar">
-                    <span class="review-preview-filename">📝 ${esc(name)}</span>
-                  </div>
-                  <pre class="review-preview-txt">${esc(text)}</pre>`;
-            } else {
-                _clearPreview();
-                alert('Supported formats: PDF, HTML, TXT');
-            }
+            _reviewFile = await readReviewFile(file);
+            _showFile(_reviewFile);
         } catch (err) {
-            wPreview.innerHTML = `<div class="review-preview-loading" style="color:var(--red)">
-              Error loading file: ${esc(err.message)}</div>`;
+            // Keep any file already attached; just report why this one was refused.
+            wPreview.hidden = false;
+            wPreview.innerHTML = `<div class="review-preview-loading" style="color:var(--red)">${esc(err.message)}</div>`;
+            if (_reviewFile) setTimeout(() => _showFile(_reviewFile), 2500);
+        } finally {
+            uploadInput.value = '';
         }
     }
+
+    if (_reviewFile) _showFile(_reviewFile);
 
     // ── AI analysis ──────────────────────────────────────────────────────────
     let _aiResult   = null; // cached analysis for this modal session
@@ -320,6 +298,8 @@ export function openWatchedModal(movie, options = {}) {
             notes:       overlay.querySelector('#wNotes').value.trim(),
             isRewatch:   overlay.querySelector('#wRewatch').checked,
             isWatchlist: false,
+            // Attached review file; null clears one that was removed.
+            ...(_reviewFile || options.initialReviewFile) ? { reviewFile: _reviewFile } : {},
             // Persist AI analysis if available
             ..._aiResult ? { aiAnalysis: {
                 sentiment:  _aiResult.sentiment,
